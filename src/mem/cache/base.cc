@@ -79,6 +79,7 @@ BaseCache::BaseCache(const BaseCacheParams *p, unsigned blk_size)
     : MemObject(p),
       cpuSidePort (p->name + ".cpu_side", this, "CpuSidePort"),
       memSidePort(p->name + ".mem_side", this, "MemSidePort"),
+      pQ(*this,this->memSidePort,"pQ"),
       mshrQueue("MSHRs", p->mshrs, 0, p->demand_mshr_reserve), // see below
       writeBuffer("write buffer", p->write_buffers, p->mshrs), // see below
       tags(p->tags),
@@ -406,7 +407,19 @@ BaseCache::handleUncacheableWriteResp(PacketPtr pkt)
 void
 BaseCache::recvTimingResp(PacketPtr pkt)
 {
+    //the timing response is here
     assert(pkt->isResponse());
+    pQ.insertPkt(pkt);
+    if (pQ.queuedResponse(pkt)){
+      return;
+    }
+
+    //we need to ensure that the there is extra
+    //contention due to the cache loads,
+    //which happen twice when the cache lines
+    //are committed
+
+    pQ._responseQueue.insert();
 
     // all header delay should be paid for by the crossbar, unless
     // this is a prefetch response from above
@@ -536,6 +549,9 @@ BaseCache::recvTimingResp(PacketPtr pkt)
     const Tick forward_time = clockEdge(forwardLatency) + pkt->headerDelay;
     // copy writebacks to write buffer
     doWritebacks(writebacks, forward_time);
+
+   //if (pkt->isRead()) invalidateBlock(blk);
+
 
     DPRINTF(CacheVerbose, "%s: Leaving with %s\n", __func__, pkt->print());
     delete pkt;
@@ -2254,6 +2270,7 @@ BaseCache::CpuSidePort::tryTiming(PacketPtr pkt)
         mustSendRetry = true;
         return false;
     }
+
     mustSendRetry = false;
     return true;
 }
@@ -2270,6 +2287,10 @@ BaseCache::CpuSidePort::recvTimingReq(PacketPtr pkt)
         assert(success);
         return true;
     } else if (tryTiming(pkt)) {
+        //if the ports are all used up
+        //since the cache uses req_time_1
+
+
         cache->recvTimingReq(pkt);
         return true;
     }
@@ -2313,6 +2334,8 @@ CpuSidePort::CpuSidePort(const std::string &_name, BaseCache *_cache,
                          const std::string &_label)
     : CacheSlavePort(_name, _cache, _label), cache(_cache)
 {
+  blocked_1=false;
+  req_time_1=0;
 }
 
 ///////////////
@@ -2403,6 +2426,49 @@ BaseCache::MemSidePort::MemSidePort(const std::string &_name,
       _snoopRespQueue(*_cache, *this, _label), cache(_cache)
 {
 }
+
+void BaseCache::PortPacketQueue::sendDeferredPacket(){
+  PacketPtr responseQueue.begin();
+
+
+  assert(_portQueue.size() != 0);
+  if (_portQueue.size() == 2){
+    cache.clearBlocked(Blocked_PortsOccupied);
+  }
+  _portQueue.pop_back();
+
+  if (_portQueue.size() != 0){
+     schedSendEvent(*_portQueue.begin()+2000) ;
+  }else { }
+  return;
+}
+
+void BaseCache::PortPacketQueue::insert(){
+  //check the port queue size
+  assert(_portQueue.size() <= 2);
+  _portQueue.push_back(curTick());
+  if (_portQueue.size() == 2){
+    cache.setBlocked(Blocked_PortsOccupied);
+  }
+  //ensure that we are scheduled
+  schedSendEvent(*_portQueue.begin()+2000) ;
+  return;
+}
+
+void BaseCache::
+PortPacketQueue::queuedResponse(PacketPtr pkt){
+    if (responseQueue.find(pkt) ==
+           responseQueue.end()) {
+        responseQueue.push_back(pkt);
+        return false;
+    } else {
+      //the packet is here
+      PacketPtr temp = responseQueue.pop_front();
+      assert(temp == pkt);
+      return true;
+    }
+}
+
 
 void
 WriteAllocator::updateMode(Addr write_addr, unsigned write_size,

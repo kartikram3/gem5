@@ -103,6 +103,7 @@ class BaseCache : public MemObject
     };
 
   public:
+
     /**
      * Reasons for caches to be blocked.
      */
@@ -110,6 +111,7 @@ class BaseCache : public MemObject
         Blocked_NoMSHRs = MSHRQueue_MSHRs,
         Blocked_NoWBBuffers = MSHRQueue_WriteBuffer,
         Blocked_NoTargets,
+        Blocked_PortsOccupied,
         NUM_BLOCKED_CAUSES
     };
 
@@ -154,6 +156,35 @@ class BaseCache : public MemObject
          */
         virtual bool isSnooping() const { return true; }
     };
+
+
+    /* Modified by Kartik */
+    /* This queue causes cache contention */
+    class PortPacketQueue : public ReqPacketQueue
+    {
+      protected:
+        BaseCache &cache;
+        std::list<uint64_t> _portQueue;
+        std::list<uint64_t> _responseQueue;
+        int32_t num_ports;
+        int32_t latency;
+        //latency depends on the cache level
+
+      public:
+        PortPacketQueue(BaseCache &cache, MasterPort &port,
+                            const std::string &label) :
+            ReqPacketQueue(cache, port, label), cache(cache)
+            { }
+
+        virtual void sendDeferredPacket();
+
+        void insert();
+
+        bool queuedResponse();
+    };
+
+    //Modified by Kartik
+    //this is used to do something
 
     /**
      * Override the default behaviour of sendDeferredPacket to enable
@@ -259,6 +290,9 @@ class BaseCache : public MemObject
 
       protected:
 
+        //Modified by Kartik
+        bool blocked_1;
+
         CacheSlavePort(const std::string &_name, BaseCache *_cache,
                        const std::string &_label);
 
@@ -288,6 +322,15 @@ class BaseCache : public MemObject
         // a pointer to our specific cache implementation
         BaseCache *cache;
 
+        //Port timers indicating
+        //whether the cache should be
+        //blocked ... in case the requests
+        //are happening at too similar
+        //a time
+
+        uint64_t req_time_1;
+        uint64_t req_time_2;
+
       protected:
         virtual bool recvTimingSnoopResp(PacketPtr pkt) override;
 
@@ -310,6 +353,7 @@ class BaseCache : public MemObject
 
     CpuSidePort cpuSidePort;
     MemSidePort memSidePort;
+    PortPacketQueue pQ;
 
   protected:
 
@@ -1127,6 +1171,7 @@ class BaseCache : public MemObject
     {
         memSidePort.schedSendEvent(time);
     }
+
 
     bool inCache(Addr addr, bool is_secure) const {
         return tags->findBlock(addr, is_secure);

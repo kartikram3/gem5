@@ -186,6 +186,7 @@ Cache::access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
         return false;
     }
 
+
     return BaseCache::access(pkt, blk, lat, writebacks);
 }
 
@@ -406,6 +407,8 @@ Cache::recvTimingReq(PacketPtr pkt)
 {
     DPRINTF(CacheTags, "%s tags:\n%s\n", __func__, tags->print());
 
+    pQ.insert();
+
     promoteWholeLineWrites(pkt);
 
     if (pkt->cacheResponding()) {
@@ -474,6 +477,7 @@ Cache::recvTimingReq(PacketPtr pkt)
 
     BaseCache::recvTimingReq(pkt);
 }
+
 
 PacketPtr
 Cache::createMissPacket(PacketPtr cpu_pkt, CacheBlk *blk,
