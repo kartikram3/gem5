@@ -406,11 +406,10 @@ BaseCache::handleUncacheableWriteResp(PacketPtr pkt)
 
 void
 BaseCache::recvTimingResp(PacketPtr pkt){
-    pQ.insert(true,pkt);
-    if (!pQ.isBlocked())
-      recvTimingRespQueued(pkt);
+    pQ.insert(pkt);
     return;
 }
+
 
 void
 BaseCache::recvTimingRespQueued(PacketPtr pkt)
@@ -2425,73 +2424,64 @@ BaseCache::MemSidePort::MemSidePort(const std::string &_name,
 }
 
 void BaseCache::PortPacketQueue::sendDeferredPacket(){
-  bool transfer=false;
-  int orig_size = _portQueue.size();
-  assert(orig_size != 0);
-  assert(orig_size <= 2);
-  _portQueue.pop_front();
+  PacketPtr responseQueue.begin();
+  //if both the response queue and packet queue
+  //are busy, then I cannot do an access
+  //check both queues
 
-  switch (_pendingQueue.size()) {
-    case 0:
-       break;
-    default:
-       PQEntry pendingEntry = *_pendingQueue.begin();
-       _pendingQueue.pop_front();
-       _portQueue.push_back(pendingEntry);
-       transfer=true;
-  }
 
-  switch (_portQueue.size()) {
-    case 0:
-      assert(orig_size == 1);
-      assert (!transfer);
-      assert (!isBlocked());
-      break;
-    case 1:
-      assert(orig_size == 2);
-      assert (!transfer);
-      assert (isBlocked());
-      clearBlocked();
-      break;
-    case 2:
-      if (transfer) assert(isBlocked());
-      break;
-    default: panic("Cannot have a size other than 0,1,2") ;
+  assert(_portQueue.size() != 0);
+  if (_portQueue.size() == 2){
+    cache.clearBlocked(Blocked_PortsOccupied);
   }
+  _portQueue.pop_back();
 
-  if (_portQueue.size() !=0) {
-     PQEntry newEntry = *_portQueue.begin();
-     if (newEntry.isResponse){
-        cache.recvTimingRespQueued(newEntry.pkt);
-     }
-     schedSendEvent((*_portQueue.begin()).time+2000);
-  }
+  if (_portQueue.size() != 0){
+     schedSendEvent(*_portQueue.begin()+2000) ;
+  }else { }
   return;
 }
 
-void BaseCache::PortPacketQueue::
-insert (bool isResponse, PacketPtr pkt){
-  _pendingQueue.push_back({curTick(),isResponse,pkt});
-  PQEntry newEntry = *_pendingQueue.begin();
-
-  switch (_portQueue.size()) {
-      case 0:
-         _portQueue.push_back(newEntry);
-         _pendingQueue.pop_front();
-         break;
-      case 1:
-         _portQueue.push_back(newEntry);
-         _pendingQueue.pop_front();
-         setBlocked();
-         break;
-      case 2:
-         assert(isBlocked());
-         break;
-      default: ;
+void BaseCache::PortPacketQueue::insert(){
+  //check the port queue size
+  assert(_portQueue.size() <= 2);
+  _portQueue.push_back(curTick());
+  if (_portQueue.size() == 2){
+    cache.setBlocked(Blocked_PortsOccupied);
   }
-  schedSendEvent((*_portQueue.begin()).time+2000) ;
+  //ensure that we are scheduled
+  schedSendEvent(*_portQueue.begin()+2000) ;
   return;
 }
+
+void 
+BaseCache::PortPacketQueue::insertResponse(PacketPtr pkt){
+  //the packet ptr is used for various purposes
+  //definitely insert into the response queue
+
+  _responseQueue.insert(pkt);
+  if(_portQueue.size == 2) {
+     //then don't insert in there
+  } else {
+     //insert into the port queue
+     _portQueue.insert(curTick()); 
+  }
+}
+
+void BaseCache::
+PortPacketQueue::queuedResponse(PacketPtr pkt){
+    if (responseQueue.find(pkt) ==
+           responseQueue.end()) {
+        responseQueue.push_back(pkt);
+        return false;
+    } else {
+      //the packet is here
+      PacketPtr temp = responseQueue.pop_front();
+      assert(temp == pkt);
+      return true;
+    }
+}
+
 
 void
 WriteAllocator::updateMode(Addr write_addr, unsigned write_size,

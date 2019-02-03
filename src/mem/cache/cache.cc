@@ -266,6 +266,10 @@ Cache::doWritebacksAtomic(PacketList& writebacks)
     }
 }
 
+void
+Cache::recvTimingSnoopResp(PacketPtr pkt){
+   recvTimingSnoopRespQueued(pkt);
+}
 
 void
 Cache::recvTimingSnoopResp(PacketPtr pkt)
@@ -407,7 +411,7 @@ Cache::recvTimingReq(PacketPtr pkt)
 {
     DPRINTF(CacheTags, "%s tags:\n%s\n", __func__, tags->print());
 
-    pQ.insert();
+    pQ.insert(false,nullptr);
 
     promoteWholeLineWrites(pkt);
 
@@ -1151,6 +1155,10 @@ Cache::handleSnoop(PacketPtr pkt, CacheBlk *blk, bool is_timing,
     return snoop_delay;
 }
 
+void
+Cache::recvTimingSnoopReq(PacketPtr pkt){
+    recvTimingSnoopReqQueued(pkt);
+}
 
 void
 Cache::recvTimingSnoopReq(PacketPtr pkt)

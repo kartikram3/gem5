@@ -162,25 +162,46 @@ class BaseCache : public MemObject
     /* This queue causes cache contention */
     class PortPacketQueue : public ReqPacketQueue
     {
+      typedef struct PQEntry{
+         uint64_t time;
+         bool isResponse;
+         PacketPtr pkt;
+      } PQEntry;
+
       protected:
         BaseCache &cache;
-        std::list<uint64_t> _portQueue;
-        std::list<uint64_t> _responseQueue;
+        std::list<PQEntry> _portQueue;
+        std::list<PQEntry> _pendingQueue;
         int32_t num_ports;
         int32_t latency;
+        bool blocked;
         //latency depends on the cache level
 
       public:
         PortPacketQueue(BaseCache &cache, MasterPort &port,
                             const std::string &label) :
             ReqPacketQueue(cache, port, label), cache(cache)
-            { }
+            { blocked = false;}
 
         virtual void sendDeferredPacket();
 
-        void insert();
+        void insert(bool isResponse, PacketPtr pkt);
 
-        bool queuedResponse();
+        void decideNext(PacketPtr pkt);
+
+        bool isBlocked(){ return blocked; };
+
+        void setBlocked(){
+          assert((blocked == 0));
+          blocked=true;
+          cache.setBlocked(Blocked_PortsOccupied);
+        }
+
+        void clearBlocked() { assert(blocked);
+                              blocked=false;
+                      cache.clearBlocked(Blocked_PortsOccupied);
+                   }
+
     };
 
     //Modified by Kartik
@@ -553,6 +574,9 @@ class BaseCache : public MemObject
      * @param pkt The response packet
      */
     virtual void recvTimingResp(PacketPtr pkt);
+
+    void recvTimingRespQueued(PacketPtr pkt);
+
 
     /**
      * Snoops bus transactions to maintain coherence.
