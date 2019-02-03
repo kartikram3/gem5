@@ -406,8 +406,9 @@ BaseCache::handleUncacheableWriteResp(PacketPtr pkt)
 
 void
 BaseCache::recvTimingResp(PacketPtr pkt){
-    pQ.insert(true,pkt);
-    if (!pQ.isBlocked())
+    bool empty = pQ.isEmpty();
+    pQ.insert(true,false,pkt);
+    if (empty)
       recvTimingRespQueued(pkt);
     return;
 }
@@ -2470,8 +2471,8 @@ void BaseCache::PortPacketQueue::sendDeferredPacket(){
 }
 
 void BaseCache::PortPacketQueue::
-insert (bool isResponse, PacketPtr pkt){
-  _pendingQueue.push_back({curTick(),isResponse,pkt});
+insert(bool isResponse, bool isSnoopResp, PacketPtr pkt){
+  _pendingQueue.push_back({curTick(),isResponse, isSnoopResp, pkt});
   PQEntry newEntry = *_pendingQueue.begin();
 
   switch (_portQueue.size()) {

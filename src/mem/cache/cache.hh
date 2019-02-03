@@ -108,7 +108,13 @@ class Cache : public BaseCache
 
     void recvTimingSnoopReq(PacketPtr pkt) override;
 
+    //Modified by Kartik
+    void recvTimingSnoopReqQueued(PacketPtr pkt);
+
     void recvTimingSnoopResp(PacketPtr pkt) override;
+
+    //Modified by Kartik
+    void recvTimingSnoopRespQueued(PacketPtr pkt);
 
     Cycles handleAtomicReqMiss(PacketPtr pkt, CacheBlk *&blk,
                                PacketList &writebacks) override;

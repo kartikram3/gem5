@@ -165,6 +165,7 @@ class BaseCache : public MemObject
       typedef struct PQEntry{
          uint64_t time;
          bool isResponse;
+         bool isSnoopReq;
          PacketPtr pkt;
       } PQEntry;
 
@@ -185,7 +186,7 @@ class BaseCache : public MemObject
 
         virtual void sendDeferredPacket();
 
-        void insert(bool isResponse, PacketPtr pkt);
+        void insert(bool isResponse, bool isSnoopReq, PacketPtr pkt);
 
         void decideNext(PacketPtr pkt);
 
@@ -201,6 +202,10 @@ class BaseCache : public MemObject
                               blocked=false;
                       cache.clearBlocked(Blocked_PortsOccupied);
                    }
+
+        bool isEmpty() {
+              return (_portQueue.size() == 0) ;
+        }
 
     };
 

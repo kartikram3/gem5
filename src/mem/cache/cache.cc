@@ -266,13 +266,15 @@ Cache::doWritebacksAtomic(PacketList& writebacks)
     }
 }
 
+//We got the snoop response
+//It can be used for the cache
 void
 Cache::recvTimingSnoopResp(PacketPtr pkt){
    recvTimingSnoopRespQueued(pkt);
 }
 
 void
-Cache::recvTimingSnoopResp(PacketPtr pkt)
+Cache::recvTimingSnoopRespQueued(PacketPtr pkt)
 {
     DPRINTF(Cache, "%s for %s\n", __func__, pkt->print());
 
@@ -411,7 +413,7 @@ Cache::recvTimingReq(PacketPtr pkt)
 {
     DPRINTF(CacheTags, "%s tags:\n%s\n", __func__, tags->print());
 
-    pQ.insert(false,nullptr);
+    pQ.insert(false,false,nullptr);
 
     promoteWholeLineWrites(pkt);
 
@@ -1157,11 +1159,15 @@ Cache::handleSnoop(PacketPtr pkt, CacheBlk *blk, bool is_timing,
 
 void
 Cache::recvTimingSnoopReq(PacketPtr pkt){
-    recvTimingSnoopReqQueued(pkt);
+   // bool notBlocked = !pQ.isBlocked();
+   // pQ.insert(false,true,pkt);
+   // if (notBlocked){
+      recvTimingSnoopReqQueued(pkt);
+   // }
 }
 
 void
-Cache::recvTimingSnoopReq(PacketPtr pkt)
+Cache::recvTimingSnoopReqQueued(PacketPtr pkt)
 {
     DPRINTF(CacheVerbose, "%s: for %s\n", __func__, pkt->print());
 
