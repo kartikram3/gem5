@@ -53,11 +53,11 @@
 #include "base/loader/symtab.hh"
 #include "base/logging.hh"
 #include "config/the_isa.hh"
+#include "cpu/base.hh"
 #include "cpu/checker/cpu.hh"
+#include "cpu/exetrace.hh"
 #include "cpu/o3/commit.hh"
 #include "cpu/o3/thread_state.hh"
-#include "cpu/base.hh"
-#include "cpu/exetrace.hh"
 #include "cpu/timebuf.hh"
 #include "debug/Activity.hh"
 #include "debug/Commit.hh"
@@ -1196,6 +1196,14 @@ DefaultCommit<Impl>::commitHead(const DynInstPtr &head_inst, unsigned inst_num)
     // Stores mark themselves as completed.
     if (!head_inst->isStore() && inst_fault == NoFault) {
         head_inst->setCompleted();
+    }
+
+    //at commit time, we want to send the commit
+    //to the cache if it is a load instruction
+    if (inst->isLoad()){
+       if (inst->isMiss()){
+
+       }
     }
 
     if (inst_fault != NoFault) {

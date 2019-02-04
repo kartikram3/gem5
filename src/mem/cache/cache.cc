@@ -424,10 +424,11 @@ Cache::recvTimingReqQueued(PacketPtr pkt)
     //put it into the bypass buffer
     //at commit time, ensure that the bypassed
     //data is removed from the cache
-    auto it = bypassedAddr.find(bypassedAddr);
+    auto it = bypassedAddr.find(pkt->getAddr());
     if (it != bypassedAddr.end()){
-       bypassedAddr.add(pkt->getAddr());
+       bypassedAddr.insert(pkt->getAddr());
     }
+
 
 
     if (pkt->cacheResponding()) {

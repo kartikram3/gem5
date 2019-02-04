@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2010-2014, 2017 ARM Limited
  * Copyright (c) 2013 Advanced Micro Devices, Inc.
@@ -59,6 +58,10 @@
 #include "debug/O3PipeView.hh"
 #include "mem/packet.hh"
 #include "mem/request.hh"
+
+#include "cpu/o"
+
+std::vector<commitLoadInfo> commitLoads;
 
 template<class Impl>
 LSQUnit<Impl>::WritebackEvent::WritebackEvent(const DynInstPtr &_inst,
@@ -694,6 +697,11 @@ LSQUnit<Impl>::executeStore(const DynInstPtr &store_inst)
     return checkViolations(load_idx, store_inst);
 
 }
+
+//create a global structure which maintains
+//information about all the committed loads
+//in the order they are being committed
+
 
 template <class Impl>
 void
