@@ -167,6 +167,9 @@ class Cache : public BaseCache
   public:
 
     //Modified by Kartik
+    std::set<Addr> bypassedAddr;
+
+    //Modified by Kartik
     void recvTimingReqQueued(PacketPtr pkt);
 
     //Modified by Kartik

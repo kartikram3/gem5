@@ -421,6 +421,15 @@ Cache::recvTimingReqQueued(PacketPtr pkt)
 
     promoteWholeLineWrites(pkt);
 
+    //put it into the bypass buffer
+    //at commit time, ensure that the bypassed
+    //data is removed from the cache
+    auto it = bypassedAddr.find(bypassedAddr);
+    if (it != bypassedAddr.end()){
+       bypassedAddr.add(pkt->getAddr());
+    }
+
+
     if (pkt->cacheResponding()) {
         // a cache above us (but not where the packet came from) is
         // responding to the request, in other words it has the line
