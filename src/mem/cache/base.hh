@@ -164,8 +164,7 @@ class BaseCache : public MemObject
     {
       typedef struct PQEntry{
          uint64_t time;
-         bool isResponse;
-         bool isSnoopReq;
+         uint32_t type;
          PacketPtr pkt;
       } PQEntry;
 
@@ -186,7 +185,7 @@ class BaseCache : public MemObject
 
         virtual void sendDeferredPacket();
 
-        void insert(bool isResponse, bool isSnoopReq, PacketPtr pkt);
+        void insert(uint32_t type, PacketPtr pkt);
 
         void decideNext(PacketPtr pkt);
 
@@ -931,6 +930,7 @@ class BaseCache : public MemObject
     /** The number of misses to trigger an exit event. */
     Counter missCount;
 
+
     /**
      * The address range to which the cache responds on the CPU side.
      * Normally this is all possible memory addresses. */
@@ -1068,6 +1068,10 @@ class BaseCache : public MemObject
 
     /** Number of replacements of valid blocks. */
     Stats::Scalar replacements;
+
+    //Modified by Kartik
+    Stats::Scalar blockedReq;
+    Stats::Scalar blockedResp;
 
     /**
      * @}

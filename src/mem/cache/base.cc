@@ -54,6 +54,7 @@
 #include "debug/CachePort.hh"
 #include "debug/CacheRepl.hh"
 #include "debug/CacheVerbose.hh"
+#include "mem/cache/cache.hh"
 #include "mem/cache/mshr.hh"
 #include "mem/cache/prefetch/base.hh"
 #include "mem/cache/queue_entry.hh"
@@ -406,10 +407,7 @@ BaseCache::handleUncacheableWriteResp(PacketPtr pkt)
 
 void
 BaseCache::recvTimingResp(PacketPtr pkt){
-    bool empty = pQ.isEmpty();
-    pQ.insert(true,false,pkt);
-    if (empty)
-      recvTimingRespQueued(pkt);
+    pQ.insert(2,pkt);
     return;
 }
 
@@ -1694,6 +1692,7 @@ BaseCache::regStats()
         overallHits.subname(i, system->getMasterName(i));
     }
 
+
     // Miss statistics
     for (int access_idx = 0; access_idx < MemCmd::NUM_MEM_CMDS; ++access_idx) {
         MemCmd cmd(access_idx);
@@ -2229,6 +2228,19 @@ BaseCache::regStats()
         .name(name() + ".replacements")
         .desc("number of replacements")
         ;
+
+    //Contention Stats
+    blockedReq
+        .name(name() + ".blocked_requests")
+        .desc("Cache Requests which were blocked")
+        ;
+
+    blockedResp
+        .name(name() + ".blocked_responses")
+        .desc("Cache Responses which were blocked")
+        ;
+
+
 }
 
 void
@@ -2265,6 +2277,7 @@ BaseCache::CpuSidePort::tryTiming(PacketPtr pkt)
         return true;
     } else if (blocked || mustSendRetry) {
         // either already committed to send a retry, or blocked
+        cache->blockedReq++;
         mustSendRetry = true;
         return false;
     }
@@ -2427,6 +2440,7 @@ BaseCache::MemSidePort::MemSidePort(const std::string &_name,
 
 void BaseCache::PortPacketQueue::sendDeferredPacket(){
   bool transfer=false;
+  PQEntry transferEntry;
   int orig_size = _portQueue.size();
   assert(orig_size != 0);
   assert(orig_size <= 2);
@@ -2436,9 +2450,10 @@ void BaseCache::PortPacketQueue::sendDeferredPacket(){
     case 0:
        break;
     default:
-       PQEntry pendingEntry = *_pendingQueue.begin();
+       transferEntry = *_pendingQueue.begin();
+       transferEntry.time = curTick();
        _pendingQueue.pop_front();
-       _portQueue.push_back(pendingEntry);
+       _portQueue.push_back(transferEntry);
        transfer=true;
   }
 
@@ -2455,41 +2470,81 @@ void BaseCache::PortPacketQueue::sendDeferredPacket(){
       clearBlocked();
       break;
     case 2:
-      if (transfer) assert(isBlocked());
+      if (transfer) {
+        assert(isBlocked());
+        switch(transferEntry.type){
+           case 1:
+              panic("Should never queue cache request");
+              break;
+           case 2:
+              assert(transferEntry.pkt);
+              cache.recvTimingRespQueued(transferEntry.pkt);
+              break;
+           case 4:
+              assert(transferEntry.pkt);
+              fprintf(stderr, "Executing deferred snoop req %lx\n",
+                  transferEntry.pkt->getAddr());
+              (dynamic_cast<Cache *>(&cache))->
+              recvTimingSnoopReqQueued(transferEntry.pkt);
+              break;
+           default:
+             panic("Unknown type being serviced\n");
+        }
+      }
       break;
     default: panic("Cannot have a size other than 0,1,2") ;
   }
 
-  if (_portQueue.size() !=0) {
-     PQEntry newEntry = *_portQueue.begin();
-     if (newEntry.isResponse){
-        cache.recvTimingRespQueued(newEntry.pkt);
-     }
-     schedSendEvent((*_portQueue.begin()).time+2000);
-  }
+  if (_portQueue.size() != 0)
+        schedSendEvent((*_portQueue.begin()).time+2000) ;
+
   return;
 }
 
 void BaseCache::PortPacketQueue::
-insert(bool isResponse, bool isSnoopResp, PacketPtr pkt){
-  _pendingQueue.push_back({curTick(),isResponse, isSnoopResp, pkt});
+insert(uint32_t type, PacketPtr pkt){
+  bool transfer = (_portQueue.size() < 2);
+  if (transfer) assert(_pendingQueue.size() == 0);
+  _pendingQueue.push_back({curTick(), type, pkt});
   PQEntry newEntry = *_pendingQueue.begin();
 
   switch (_portQueue.size()) {
       case 0:
          _portQueue.push_back(newEntry);
          _pendingQueue.pop_front();
+         assert(transfer);
          break;
       case 1:
          _portQueue.push_back(newEntry);
          _pendingQueue.pop_front();
+         assert(transfer);
          setBlocked();
          break;
       case 2:
          assert(isBlocked());
+         if (type == 2) cache.blockedResp++;
+         assert(!transfer);
          break;
       default: ;
   }
+
+  if (transfer){
+     switch(type) {
+        case 1 : //cache request
+          (dynamic_cast<Cache *>(&cache))->recvTimingReqQueued(pkt);
+          break;
+        case 2 : //cache response
+          cache.recvTimingRespQueued(pkt);
+          break;
+        case 4 : //cache snoop req
+          fprintf(stderr, "Executing snoop req %lx\n", pkt->getAddr());
+          (dynamic_cast<Cache *>(&cache))->recvTimingSnoopReqQueued(pkt);
+          break;
+        default :
+          panic("An unknown type is occupying the port \n");
+     }
+  }
+
   schedSendEvent((*_portQueue.begin()).time+2000) ;
   return;
 }

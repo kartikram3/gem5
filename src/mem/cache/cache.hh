@@ -99,6 +99,7 @@ class Cache : public BaseCache
 
     void recvTimingReq(PacketPtr pkt) override;
 
+
     void doWritebacks(PacketList& writebacks, Tick forward_time) override;
 
     void doWritebacksAtomic(PacketList& writebacks) override;
@@ -108,8 +109,6 @@ class Cache : public BaseCache
 
     void recvTimingSnoopReq(PacketPtr pkt) override;
 
-    //Modified by Kartik
-    void recvTimingSnoopReqQueued(PacketPtr pkt);
 
     void recvTimingSnoopResp(PacketPtr pkt) override;
 
@@ -166,6 +165,13 @@ class Cache : public BaseCache
     bool isCachedAbove(PacketPtr pkt, bool is_timing = true);
 
   public:
+
+    //Modified by Kartik
+    void recvTimingReqQueued(PacketPtr pkt);
+
+    //Modified by Kartik
+    void recvTimingSnoopReqQueued(PacketPtr pkt);
+
     /** Instantiates a basic cache object. */
     Cache(const CacheParams *p);
 

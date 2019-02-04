@@ -409,11 +409,15 @@ Cache::handleTimingReqMiss(PacketPtr pkt, CacheBlk *blk, Tick forward_time,
 }
 
 void
-Cache::recvTimingReq(PacketPtr pkt)
+Cache::recvTimingReq(PacketPtr pkt){
+   pQ.insert(1,pkt);
+   return;
+}
+
+void
+Cache::recvTimingReqQueued(PacketPtr pkt)
 {
     DPRINTF(CacheTags, "%s tags:\n%s\n", __func__, tags->print());
-
-    pQ.insert(false,false,nullptr);
 
     promoteWholeLineWrites(pkt);
 
@@ -1159,11 +1163,11 @@ Cache::handleSnoop(PacketPtr pkt, CacheBlk *blk, bool is_timing,
 
 void
 Cache::recvTimingSnoopReq(PacketPtr pkt){
-   // bool notBlocked = !pQ.isBlocked();
-   // pQ.insert(false,true,pkt);
-   // if (notBlocked){
-      recvTimingSnoopReqQueued(pkt);
-   // }
+    //fprintf(stderr,"Received snoop req %lx \n",
+    //    pkt->getAddr());
+    //pQ.insert(4,pkt);
+    recvTimingSnoopReqQueued(pkt);
+    return;
 }
 
 void
