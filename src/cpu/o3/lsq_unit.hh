@@ -778,10 +778,15 @@ LSQUnit<Impl>::read(const RequestPtr &req,
     if (!TheISA::HasUnalignedMemAcc || !sreqLow) {
         // Point the first packet at the main data packet.
         fst_data_pkt = data_pkt;
+        load_inst->lowAddr = data_pkt->getAddr();
     } else {
         // Create the split packets.
         fst_data_pkt = Packet::createRead(sreqLow);
         snd_data_pkt = Packet::createRead(sreqHigh);
+
+        //useful for commit
+        load_inst->lowAddr = fst_data_pkt->getAddr();
+        load_inst->highAddr = snd_data_pkt->getAddr();
 
         fst_data_pkt->dataStatic(load_inst->memData);
         snd_data_pkt->dataStatic(load_inst->memData + sreqLow->getSize());

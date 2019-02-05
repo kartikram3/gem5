@@ -256,6 +256,12 @@ class Request
         ARG_SEGMENT            = 0x00000800,
     };
 
+  //Modified by Kartik
+  bool isCacheMiss;
+
+  //Modified by Kartik
+  bool isMiss(){ return isCacheMiss; }
+
   private:
     typedef uint16_t PrivateFlagsType;
     typedef ::Flags<PrivateFlagsType> PrivateFlags;
@@ -828,7 +834,11 @@ class Request
      * Set/Get the time taken to complete this request's access, not including
      *  the time to successfully translate the request.
      */
-    void setAccessLatency() { accessDelta = curTick() - _time - translateDelta; }
+    void setAccessLatency() {
+      accessDelta = curTick() - _time - translateDelta;
+      if (accessDelta > 2000 ) { isCacheMiss = true;}
+      else{ isCacheMiss = false; }
+    }
     Tick getAccessLatency() const { return accessDelta; }
 
     /**

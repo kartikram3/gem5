@@ -57,7 +57,6 @@
 #include "cpu/checker/cpu.hh"
 #include "cpu/exetrace.hh"
 #include "cpu/o3/commit.hh"
-#include "cpu/o3/commit_load_info.hh"
 #include "cpu/o3/thread_state.hh"
 #include "cpu/timebuf.hh"
 #include "debug/Activity.hh"
@@ -1205,22 +1204,15 @@ DefaultCommit<Impl>::commitHead(const DynInstPtr &head_inst, unsigned inst_num)
     //modified by Kartik
     //at commit time, we want to send the commit
     //to the cache if it is a load instruction
-    //if (head_inst->isLoad()){
-    //  for (auto it = committedLoads.begin() ;
-    //            it != committedLoads.end()  ;
-    //            it ++) {
-    //      if ((*it).seqNum == head_inst->seqNum){
-    //          if ((*it).isMiss) {;} //send the contention req
-    //             committedLoads.erase(it);
-    //          break;
-    //      }
-    //  }
-    //}
+    if (head_inst->isLoad()){
+      for (auto it = committedLoads.begin() ; 
+                it != committedLoads.end()  ;
+                it ++) {
+          if (*it == head_inst->seqNum){
 
-    fprintf(stderr, "The committed loads size is %d"
-                     "head inst serial number is %lx\n",
-                    (int)committedLoads.size(),
-                    head_inst->seqNum);
+          }
+      }
+    }
 
     if (inst_fault != NoFault) {
         DPRINTF(Commit, "Inst [sn:%lli] PC %s has a fault\n",

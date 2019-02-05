@@ -81,6 +81,7 @@ class QueuedSlavePort : public SlavePort
     { }
 
     virtual ~QueuedSlavePort() { }
+    virtual bool recvTimingCommitReq (Addr addr) {return true;}
 
     /**
      * Schedule the sending of a timing response.

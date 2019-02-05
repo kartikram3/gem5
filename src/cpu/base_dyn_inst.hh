@@ -79,6 +79,13 @@ template <class Impl>
 class BaseDynInst : public ExecContext, public RefCounted
 {
   public:
+    //commit information
+    //checks whether it is a cache miss
+    Addr lowAddr;
+    Addr highAddr;
+    bool isMiss;
+
+
     // Typedef for the CPU.
     typedef typename Impl::CPUType ImplCPU;
     typedef typename ImplCPU::ImplState ImplState;
@@ -504,6 +511,7 @@ class BaseDynInst : public ExecContext, public RefCounted
     bool isNop()          const { return staticInst->isNop(); }
     bool isMemRef()       const { return staticInst->isMemRef(); }
     bool isLoad()         const { return staticInst->isLoad(); }
+    bool isCacheMiss()         {return isMiss;}
     bool isStore()        const { return staticInst->isStore(); }
     bool isAtomic()       const { return staticInst->isAtomic(); }
     bool isStoreConditional() const

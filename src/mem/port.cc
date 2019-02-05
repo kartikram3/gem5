@@ -184,6 +184,14 @@ MasterPort::sendTimingReq(PacketPtr pkt)
 }
 
 bool
+MasterPort::sendTimingCommitReq(Addr addr)
+{
+    //assert(pkt->isRequest());
+    return _slavePort->recvTimingCommitReq(addr);
+}
+
+
+bool
 MasterPort::tryTiming(PacketPtr pkt) const
 {
   assert(pkt->isRequest());

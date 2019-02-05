@@ -313,6 +313,10 @@ class BaseCache : public MemObject
 
         bool isBlocked() const { return blocked; }
 
+        virtual bool recvTimingCommitReq (Addr addr){
+            return true;
+        }
+
       protected:
 
         //Modified by Kartik
@@ -362,6 +366,8 @@ class BaseCache : public MemObject
         virtual bool tryTiming(PacketPtr pkt) override;
 
         virtual bool recvTimingReq(PacketPtr pkt) override;
+
+        virtual bool recvTimingCommitReq (Addr addr) override;
 
         virtual Tick recvAtomic(PacketPtr pkt) override;
 

@@ -2268,6 +2268,21 @@ BaseCache::CpuSidePort::recvTimingSnoopResp(PacketPtr pkt)
     return true;
 }
 
+//Modified by Kartik
+bool
+BaseCache::CpuSidePort::recvTimingCommitReq(Addr addr){
+    //block the port here and see whether that
+    //has any impact on performance
+    cache->pQ.insert(8,nullptr);
+
+    //Also insert it into the queue for the L2 cache
+    //this goes to the network which will then
+    //transmit it to the appropriate cache
+    //we need to transmit it accordingly
+    //cache->memSidePort.sendTimingCommitReq(addr);
+    return true;
+}
+
 
 bool
 BaseCache::CpuSidePort::tryTiming(PacketPtr pkt)
@@ -2487,6 +2502,9 @@ void BaseCache::PortPacketQueue::sendDeferredPacket(){
               (dynamic_cast<Cache *>(&cache))->
               recvTimingSnoopReqQueued(transferEntry.pkt);
               break;
+           case 8:
+             assert(!transferEntry.pkt);
+             break;
            default:
              panic("Unknown type being serviced\n");
         }
@@ -2539,6 +2557,12 @@ insert(uint32_t type, PacketPtr pkt){
         case 4 : //cache snoop req
           fprintf(stderr, "Executing snoop req %lx\n", pkt->getAddr());
           (dynamic_cast<Cache *>(&cache))->recvTimingSnoopReqQueued(pkt);
+          break;
+        case 8:
+          assert(pkt == nullptr);
+          //do nothing ..., actually, we will transfer
+          //the data from the bypass buffer into the
+          //cache
           break;
         default :
           panic("An unknown type is occupying the port \n");

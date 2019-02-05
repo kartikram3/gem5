@@ -429,8 +429,6 @@ Cache::recvTimingReqQueued(PacketPtr pkt)
        bypassedAddr.insert(pkt->getAddr());
     }
 
-
-
     if (pkt->cacheResponding()) {
         // a cache above us (but not where the packet came from) is
         // responding to the request, in other words it has the line

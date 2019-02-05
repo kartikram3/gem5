@@ -50,6 +50,7 @@
 #include "base/str.hh"
 #include "config/the_isa.hh"
 #include "cpu/checker/cpu.hh"
+#include "cpu/o3/commit_load_info.hh"
 #include "cpu/o3/lsq.hh"
 #include "cpu/o3/lsq_unit.hh"
 #include "debug/Activity.hh"
@@ -59,9 +60,8 @@
 #include "mem/packet.hh"
 #include "mem/request.hh"
 
-#include "cpu/o"
-
-std::vector<commitLoadInfo> commitLoads;
+//global commit vector
+std::set<commitLoadInfo> committedLoads;
 
 template<class Impl>
 LSQUnit<Impl>::WritebackEvent::WritebackEvent(const DynInstPtr &_inst,
@@ -139,7 +139,11 @@ LSQUnit<Impl>::completeDataAccess(PacketPtr pkt)
     }
 
     pkt->req->setAccessLatency();
+    inst->isMiss = pkt->req->isMiss();
     cpu->ppDataAccessComplete->notify(std::make_pair(inst, pkt));
+
+    //we have updated the state saying
+    //whether it is a cache miss or not
 
     delete state;
 }
@@ -711,6 +715,22 @@ LSQUnit<Impl>::commitLoad()
 
     DPRINTF(LSQUnit, "Committing head load instruction, PC %s\n",
             loadQueue[loadHead]->pcState());
+
+    DynInstPtr inst = loadQueue[loadHead];
+
+    //put it into the commit vector
+    //the committed load needs to be
+    //also committed into the cache
+    //if there was a cache miss
+    if (inst->lowAddr != -1){
+      if (inst->isMiss){
+         //We send the timing commit
+         //request regardless of other
+         //issues
+         dcachePort->sendTimingCommitReq(inst->lowAddr);
+         //dcachePort->sendTimingCommitReq(inst->highAddr);
+      }
+    }
 
     loadQueue[loadHead] = NULL;
 

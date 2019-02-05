@@ -94,6 +94,11 @@ template <class Impl>
 void
 BaseDynInst<Impl>::initVars()
 {
+    //commit information
+    lowAddr = -1;
+    highAddr = -1;
+    isMiss = false;
+
     memData = NULL;
     effAddr = 0;
     physEffAddrLow = 0;
