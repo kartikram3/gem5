@@ -225,7 +225,7 @@ class MasterPort : public BaseMasterPort
 
     //we would like to send a timing commit request
 
-    bool sendTimingCommitReq(Addr addr);
+    bool sendTimingCommitReq(Addr addr, int missType);
 
     /**
      * Check if the slave can handle a timing request.
@@ -469,7 +469,7 @@ class SlavePort : public BaseSlavePort
     virtual bool recvTimingReq(PacketPtr pkt) = 0;
 
     //Modified by Kartik
-    virtual bool recvTimingCommitReq(Addr addr) { return true;};
+    virtual bool recvTimingCommitReq(Addr addr, int missType) { return true;};
 
     /**
      * Availability request from the master port.

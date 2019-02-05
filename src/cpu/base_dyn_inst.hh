@@ -83,7 +83,7 @@ class BaseDynInst : public ExecContext, public RefCounted
     //checks whether it is a cache miss
     Addr lowAddr;
     Addr highAddr;
-    bool isMiss;
+    int32_t isMiss;
 
 
     // Typedef for the CPU.
@@ -511,7 +511,7 @@ class BaseDynInst : public ExecContext, public RefCounted
     bool isNop()          const { return staticInst->isNop(); }
     bool isMemRef()       const { return staticInst->isMemRef(); }
     bool isLoad()         const { return staticInst->isLoad(); }
-    bool isCacheMiss()         {return isMiss;}
+    int32_t isCacheMiss()         {return isMiss;}
     bool isStore()        const { return staticInst->isStore(); }
     bool isAtomic()       const { return staticInst->isAtomic(); }
     bool isStoreConditional() const

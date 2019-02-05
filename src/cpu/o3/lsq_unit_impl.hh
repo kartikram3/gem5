@@ -140,6 +140,16 @@ LSQUnit<Impl>::completeDataAccess(PacketPtr pkt)
 
     pkt->req->setAccessLatency();
     inst->isMiss = pkt->req->isMiss();
+    switch (inst->isMiss) {
+      case 1: l1Misses++;
+              break;
+      case 2: l1Misses ++;
+              l2Misses ++;
+              break;
+      default:
+              ; //do nothing
+    }
+
     cpu->ppDataAccessComplete->notify(std::make_pair(inst, pkt));
 
     //we have updated the state saying
@@ -219,6 +229,18 @@ LSQUnit<Impl>::regStats()
     lsqForwLoads
         .name(name() + ".forwLoads")
         .desc("Number of loads that had data forwarded from stores");
+
+    //Modified by Kartik
+
+    l1Misses
+        .name(name() + ".l1_misses_committed")
+        .desc("Number of loads that missed L1 and needed to be committed");
+
+    l2Misses
+        .name(name() + ".l2_misses_committed")
+        .desc("Number of loads that missed L2 and needed to be committed");
+
+    //TODO ... also model extra memory contention
 
     invAddrLoads
         .name(name() + ".invAddrLoads")
@@ -727,8 +749,10 @@ LSQUnit<Impl>::commitLoad()
          //We send the timing commit
          //request regardless of other
          //issues
-         dcachePort->sendTimingCommitReq(inst->lowAddr);
+         dcachePort->sendTimingCommitReq(inst->lowAddr,
+                                         inst->isMiss);
          //dcachePort->sendTimingCommitReq(inst->highAddr);
+         //fprintf(stderr,"Sending extra commit req %lx\n", inst->lowAddr );
       }
     }
 

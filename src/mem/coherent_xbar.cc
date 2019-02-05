@@ -138,6 +138,23 @@ CoherentXBar::init()
         snoopFilter->setSlavePorts(slavePorts);
 }
 
+
+bool
+CoherentXBar::recvTimingCommitReq(Addr addr, int missType){
+  //we want to send the commit signal to the destination
+    //fprintf(stderr,"Receiving timing commit req in interconnect\n");
+    PortID temp = 10;
+    AddrRange addr_temp;
+    addr_temp = RangeSize(addr, 64);
+    temp = findPort(addr_temp);
+    ////fprintf(stderr, "The temp master port id is %d\n",
+    //// (int)temp);
+    masterPorts[temp]->sendTimingCommitReq(addr,missType);
+    return true;
+}
+//receive a timing request from the mem
+//helps to finish the solution
+
 bool
 CoherentXBar::recvTimingReq(PacketPtr pkt, PortID slave_port_id)
 {

@@ -410,10 +410,12 @@ Cache::handleTimingReqMiss(PacketPtr pkt, CacheBlk *blk, Tick forward_time,
 
 void
 Cache::recvTimingReq(PacketPtr pkt){
-   pQ.insert(1,pkt);
+   //this is a timing req
+   pQ.insert(1,pkt,0,0);
    return;
 }
 
+//This is a queued timing req
 void
 Cache::recvTimingReqQueued(PacketPtr pkt)
 {

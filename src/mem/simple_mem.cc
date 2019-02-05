@@ -99,6 +99,13 @@ SimpleMemory::recvFunctional(PacketPtr pkt)
 }
 
 bool
+SimpleMemory::recvTimingCommitReq(Addr addr, int missType){
+    //this is a timing commit request
+    //fprintf(stderr, "Memory received a timing commit req\n");
+    return true;
+}
+
+bool
 SimpleMemory::recvTimingReq(PacketPtr pkt)
 {
     panic_if(pkt->cacheResponding(), "Should not see packets where cache "
@@ -281,6 +288,15 @@ bool
 SimpleMemory::MemoryPort::recvTimingReq(PacketPtr pkt)
 {
     return memory.recvTimingReq(pkt);
+}
+
+//modified by Kartik
+bool
+SimpleMemory::MemoryPort::recvTimingCommitReq(Addr addr, int missType)
+{
+    //There is a timing commit request here
+    //fprintf(stderr,"Received the timing commit request in simple mem !\n");
+    return memory.recvTimingCommitReq(addr, missType);
 }
 
 void

@@ -166,18 +166,22 @@ class BaseCache : public MemObject
          uint64_t time;
          uint32_t type;
          PacketPtr pkt;
+         Addr addr;
+         int isMiss;
       } PQEntry;
 
       protected:
         BaseCache &cache;
         std::list<PQEntry> _portQueue;
         std::list<PQEntry> _pendingQueue;
-        int32_t num_ports;
-        int32_t latency;
         bool blocked;
         //latency depends on the cache level
 
+
       public:
+        int32_t latency;
+        int32_t num_ports;
+
         PortPacketQueue(BaseCache &cache, MasterPort &port,
                             const std::string &label) :
             ReqPacketQueue(cache, port, label), cache(cache)
@@ -185,7 +189,8 @@ class BaseCache : public MemObject
 
         virtual void sendDeferredPacket();
 
-        void insert(uint32_t type, PacketPtr pkt);
+        void insert(uint32_t type, PacketPtr pkt,
+                    Addr addr, int missType);
 
         void decideNext(PacketPtr pkt);
 
@@ -219,7 +224,6 @@ class BaseCache : public MemObject
      */
     class CacheReqPacketQueue : public ReqPacketQueue
     {
-
       protected:
 
         BaseCache &cache;
@@ -302,7 +306,6 @@ class BaseCache : public MemObject
      */
     class CacheSlavePort : public QueuedSlavePort
     {
-
       public:
 
         /** Do not accept any new requests. */
@@ -313,7 +316,7 @@ class BaseCache : public MemObject
 
         bool isBlocked() const { return blocked; }
 
-        virtual bool recvTimingCommitReq (Addr addr){
+        virtual bool recvTimingCommitReq (Addr addr, int missType){
             return true;
         }
 
@@ -337,7 +340,6 @@ class BaseCache : public MemObject
         void processSendRetry();
 
         EventFunctionWrapper sendRetryEvent;
-
     };
 
     /**
@@ -367,7 +369,7 @@ class BaseCache : public MemObject
 
         virtual bool recvTimingReq(PacketPtr pkt) override;
 
-        virtual bool recvTimingCommitReq (Addr addr) override;
+        virtual bool recvTimingCommitReq (Addr addr, int missType) override;
 
         virtual Tick recvAtomic(PacketPtr pkt) override;
 
@@ -943,6 +945,9 @@ class BaseCache : public MemObject
     const AddrRangeList addrRanges;
 
   public:
+    //Modified by Kartik
+    int level;
+
     /** System we are currently operating in. */
     System *system;
 
@@ -1078,6 +1083,7 @@ class BaseCache : public MemObject
     //Modified by Kartik
     Stats::Scalar blockedReq;
     Stats::Scalar blockedResp;
+    Stats::Scalar blockedCommit;
 
     /**
      * @}

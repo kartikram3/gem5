@@ -114,6 +114,10 @@ class CoherentXBar : public BaseXBar
         virtual bool recvTimingReq(PacketPtr pkt)
         { return xbar.recvTimingReq(pkt, id); }
 
+        //Modified by Kartik ... the timing commit request is created
+        virtual bool recvTimingCommitReq(Addr addr, int missType)
+        { return xbar.recvTimingCommitReq(addr, missType); }
+
         /**
          * When receiving a timing snoop response, pass it to the crossbar.
          */
@@ -298,6 +302,8 @@ class CoherentXBar : public BaseXBar
     /** Function called by the port when the crossbar is recieving a Timing
       request packet.*/
     bool recvTimingReq(PacketPtr pkt, PortID slave_port_id);
+
+    bool recvTimingCommitReq(Addr addr, int missType);
 
     /** Function called by the port when the crossbar is recieving a Timing
       response packet.*/

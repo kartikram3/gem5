@@ -48,6 +48,8 @@
 
 #include "mem/cache/base.hh"
 
+#include <regex>
+
 #include "base/compiler.hh"
 #include "base/logging.hh"
 #include "debug/Cache.hh"
@@ -123,6 +125,34 @@ BaseCache::BaseCache(const BaseCacheParams *p, unsigned blk_size)
     tags->tagsInit();
     if (prefetcher)
         prefetcher->setCache(this);
+
+    //set the cache level
+    std::regex e1i ("(.*)(dcache)(.*)");
+    std::regex e1d ("(.*)(icache)(.*)");
+    std::regex e1itb ("(.*)(itb)(.*)");
+    std::regex e1dtb ("(.*)(dtb)(.*)");
+
+    if (std::regex_match(name(),e1d)) {
+      level=1;
+    } else if (std::regex_match(name(),e1i)) {
+      level=1;
+    } else if (std::regex_match(name(),e1itb)) {
+      level=1;
+    } else if (std::regex_match(name(),e1dtb)) {
+      level=1;
+    } else level=2;
+      fprintf (stderr,"%s cache is level %d\n",name().c_str(), level );
+
+    //set the latency for the cache
+    if (level == 1){
+       pQ.latency = 2000;
+       pQ.num_ports = 2;
+    } else {
+       pQ.latency = 20000;
+       pQ.num_ports = 3;
+    }
+
+    assert(pQ.num_ports >=2);
 }
 
 BaseCache::~BaseCache()
@@ -407,7 +437,7 @@ BaseCache::handleUncacheableWriteResp(PacketPtr pkt)
 
 void
 BaseCache::recvTimingResp(PacketPtr pkt){
-    pQ.insert(2,pkt);
+    pQ.insert(2,pkt,0,0);
     return;
 }
 
@@ -2240,6 +2270,10 @@ BaseCache::regStats()
         .desc("Cache Responses which were blocked")
         ;
 
+    blockedCommit
+        .name(name() + ".blocked_commits")
+        .desc("Cache commits which were blocked")
+        ;
 
 }
 
@@ -2270,16 +2304,10 @@ BaseCache::CpuSidePort::recvTimingSnoopResp(PacketPtr pkt)
 
 //Modified by Kartik
 bool
-BaseCache::CpuSidePort::recvTimingCommitReq(Addr addr){
+BaseCache::CpuSidePort::recvTimingCommitReq(Addr addr, int missType){
     //block the port here and see whether that
     //has any impact on performance
-    cache->pQ.insert(8,nullptr);
-
-    //Also insert it into the queue for the L2 cache
-    //this goes to the network which will then
-    //transmit it to the appropriate cache
-    //we need to transmit it accordingly
-    //cache->memSidePort.sendTimingCommitReq(addr);
+    cache->pQ.insert(8,nullptr,addr,missType);
     return true;
 }
 
@@ -2454,11 +2482,13 @@ BaseCache::MemSidePort::MemSidePort(const std::string &_name,
 }
 
 void BaseCache::PortPacketQueue::sendDeferredPacket(){
+  int level;
+  int isMiss;
   bool transfer=false;
   PQEntry transferEntry;
   int orig_size = _portQueue.size();
   assert(orig_size != 0);
-  assert(orig_size <= 2);
+  assert(orig_size <= num_ports);
   _portQueue.pop_front();
 
   switch (_pendingQueue.size()) {
@@ -2472,19 +2502,21 @@ void BaseCache::PortPacketQueue::sendDeferredPacket(){
        transfer=true;
   }
 
-  switch (_portQueue.size()) {
-    case 0:
+  if (_portQueue.size() == 0) {
       assert(orig_size == 1);
       assert (!transfer);
       assert (!isBlocked());
-      break;
-    case 1:
-      assert(orig_size == 2);
+  }else if (_portQueue.size() < num_ports){
+      assert(orig_size <= num_ports);
+      assert(orig_size != 1);
       assert (!transfer);
-      assert (isBlocked());
-      clearBlocked();
-      break;
-    case 2:
+      if (_portQueue.size() == (num_ports - 1)){
+        assert (isBlocked());
+        clearBlocked();
+      } else {
+        assert (!isBlocked());
+      }
+  }else {
       if (transfer) {
         assert(isBlocked());
         switch(transferEntry.type){
@@ -2504,46 +2536,61 @@ void BaseCache::PortPacketQueue::sendDeferredPacket(){
               break;
            case 8:
              assert(!transferEntry.pkt);
+             level = cache.level;
+             isMiss = transferEntry.isMiss;
+             switch (level) {
+               case 1:
+                if (isMiss > 0)
+                  cache.memSidePort.
+                    sendTimingCommitReq
+                      (transferEntry.addr, isMiss);
+                break;
+               case 2:
+                assert (isMiss > 0);
+                if (isMiss > 1)
+                  cache.memSidePort.
+                    sendTimingCommitReq
+                      (transferEntry.addr, isMiss);
+                break;
+               default:
+                panic("Only two levels should be defined \n");
+             }
              break;
            default:
              panic("Unknown type being serviced\n");
         }
       }
-      break;
-    default: panic("Cannot have a size other than 0,1,2") ;
   }
 
   if (_portQueue.size() != 0)
-        schedSendEvent((*_portQueue.begin()).time+2000) ;
+        schedSendEvent((*_portQueue.begin()).time+latency) ;
 
   return;
 }
 
 void BaseCache::PortPacketQueue::
-insert(uint32_t type, PacketPtr pkt){
-  bool transfer = (_portQueue.size() < 2);
+insert(uint32_t type, PacketPtr pkt, Addr addr, int isMiss){
+  int level;
+  bool transfer = (_portQueue.size() < num_ports);
   if (transfer) assert(_pendingQueue.size() == 0);
-  _pendingQueue.push_back({curTick(), type, pkt});
+  _pendingQueue.push_back({curTick(), type, pkt, addr, isMiss});
   PQEntry newEntry = *_pendingQueue.begin();
 
-  switch (_portQueue.size()) {
-      case 0:
-         _portQueue.push_back(newEntry);
-         _pendingQueue.pop_front();
-         assert(transfer);
-         break;
-      case 1:
-         _portQueue.push_back(newEntry);
-         _pendingQueue.pop_front();
-         assert(transfer);
-         setBlocked();
-         break;
-      case 2:
-         assert(isBlocked());
-         if (type == 2) cache.blockedResp++;
-         assert(!transfer);
-         break;
-      default: ;
+  if (_portQueue.size() == 0) {
+     _portQueue.push_back(newEntry);
+     _pendingQueue.pop_front();
+     assert(transfer);
+  }else if (_portQueue.size() < num_ports){
+     _portQueue.push_back(newEntry);
+     _pendingQueue.pop_front();
+     assert(transfer);
+     if (_portQueue.size() == num_ports) setBlocked();
+  }else {
+     assert(isBlocked());
+     if (type == 1) cache.blockedReq++;
+     else if (type == 2) cache.blockedResp++;
+     else if (type == 8) cache.blockedCommit++;
+     assert(!transfer);
   }
 
   if (transfer){
@@ -2560,16 +2607,27 @@ insert(uint32_t type, PacketPtr pkt){
           break;
         case 8:
           assert(pkt == nullptr);
-          //do nothing ..., actually, we will transfer
-          //the data from the bypass buffer into the
-          //cache
+          level = cache.level;
+          switch (level) {
+            case 1:
+               if (isMiss > 0)
+                  cache.memSidePort.
+                    sendTimingCommitReq(addr,isMiss);
+               break;
+            case 2:
+               if (isMiss > 1)
+                  cache.memSidePort.
+                    sendTimingCommitReq(addr,isMiss);
+               break;
+            default :
+               panic("There are max 2 cache levels\n");
+          }
           break;
         default :
           panic("An unknown type is occupying the port \n");
      }
   }
-
-  schedSendEvent((*_portQueue.begin()).time+2000) ;
+  schedSendEvent((*_portQueue.begin()).time+latency) ;
   return;
 }
 

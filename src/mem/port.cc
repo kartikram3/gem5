@@ -184,10 +184,10 @@ MasterPort::sendTimingReq(PacketPtr pkt)
 }
 
 bool
-MasterPort::sendTimingCommitReq(Addr addr)
+MasterPort::sendTimingCommitReq(Addr addr, int missType)
 {
     //assert(pkt->isRequest());
-    return _slavePort->recvTimingCommitReq(addr);
+    return _slavePort->recvTimingCommitReq(addr,missType);
 }
 
 

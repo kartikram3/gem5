@@ -1217,10 +1217,10 @@ DefaultCommit<Impl>::commitHead(const DynInstPtr &head_inst, unsigned inst_num)
     //  }
     //}
 
-    fprintf(stderr, "The committed loads size is %d"
-                     "head inst serial number is %lx\n",
-                    (int)committedLoads.size(),
-                    head_inst->seqNum);
+    //fprintf(stderr, "The committed loads size is %d"
+    //                 "head inst serial number is %lx\n",
+    //                (int)committedLoads.size(),
+    //                head_inst->seqNum);
 
     if (inst_fault != NoFault) {
         DPRINTF(Commit, "Inst [sn:%lli] PC %s has a fault\n",

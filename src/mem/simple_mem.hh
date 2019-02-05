@@ -105,6 +105,7 @@ class SimpleMemory : public AbstractMemory
 
         AddrRangeList getAddrRanges() const;
 
+        virtual bool recvTimingCommitReq(Addr addr, int missType) override;
     };
 
     MemoryPort port;
@@ -198,6 +199,8 @@ class SimpleMemory : public AbstractMemory
     void recvFunctional(PacketPtr pkt);
 
     bool recvTimingReq(PacketPtr pkt);
+
+    bool recvTimingCommitReq(Addr addr, int missType);
 
     void recvRespRetry();
 

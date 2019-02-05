@@ -257,10 +257,10 @@ class Request
     };
 
   //Modified by Kartik
-  bool isCacheMiss;
+  int32_t isCacheMiss;
 
   //Modified by Kartik
-  bool isMiss(){ return isCacheMiss; }
+  int32_t isMiss(){ return isCacheMiss; }
 
   private:
     typedef uint16_t PrivateFlagsType;
@@ -836,8 +836,9 @@ class Request
      */
     void setAccessLatency() {
       accessDelta = curTick() - _time - translateDelta;
-      if (accessDelta > 2000 ) { isCacheMiss = true;}
-      else{ isCacheMiss = false; }
+      if ( accessDelta > 30000 ) { isCacheMiss = 2; }
+      else if ( accessDelta > 2000 ) { isCacheMiss = 1; }
+      else{ isCacheMiss = 0; }
     }
     Tick getAccessLatency() const { return accessDelta; }
 
