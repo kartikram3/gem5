@@ -136,6 +136,7 @@ BaseCache::BaseCache(const BaseCacheParams *p, unsigned blk_size)
       level=1;
     } else if (std::regex_match(name(),e1i)) {
       level=1;
+      //isIcache=true;
     } else if (std::regex_match(name(),e1itb)) {
       level=1;
     } else if (std::regex_match(name(),e1dtb)) {

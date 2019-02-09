@@ -177,7 +177,6 @@ class BaseCache : public MemObject
         bool blocked;
         //latency depends on the cache level
 
-
       public:
         int32_t latency;
         int32_t num_ports;
