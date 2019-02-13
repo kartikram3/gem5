@@ -147,7 +147,7 @@ BaseCache::BaseCache(const BaseCacheParams *p, unsigned blk_size)
     //set the latency for the cache
     if (level == 1){
        pQ.latency = 2000;
-       pQ.num_ports = 2;
+       pQ.num_ports = 3;
     } else {
        pQ.latency = 20000;
        pQ.num_ports = 3;
@@ -2513,23 +2513,23 @@ void BaseCache::PortPacketQueue::sendDeferredPacket(){
   if (_portQueue.size() == 0) {
       assert(orig_size == 1);
       assert (!transfer);
-      //assert (!isBlocked());
+      assert (!isBlocked());
   }else if (_portQueue.size() < num_ports){
       assert(orig_size <= num_ports);
       assert(orig_size != 1);
       assert (!transfer);
       if (_portQueue.size() == (num_ports - 1)){
-        //assert (isBlocked());
-        //clearBlocked();
+        assert (isBlocked());
+        clearBlocked();
       } else {
-        //assert (!isBlocked());
+        assert (!isBlocked());
       }
   }else {
       if (transfer) {
-        //assert(isBlocked());
+        assert(isBlocked());
         switch(transferEntry.type){
            case 1:
-              //panic("Should never queue cache request");
+              panic("Should never queue cache request");
               assert(transferEntry.pkt);
               (dynamic_cast<Cache *>(&cache))
                   ->recvTimingReqQueued(transferEntry.pkt);
@@ -2596,9 +2596,9 @@ insert(uint32_t type, PacketPtr pkt, Addr addr, int isMiss){
      _portQueue.push_back(newEntry);
      _pendingQueue.pop_front();
      assert(transfer);
-     //if (_portQueue.size() == num_ports) setBlocked();
+     if (_portQueue.size() == num_ports) setBlocked();
   }else {
-     //assert(isBlocked());
+     assert(isBlocked());
      if (type == 1) cache.blockedReq++;
      else if (type == 2) cache.blockedResp++;
      else if (type == 8) cache.blockedCommit++;
