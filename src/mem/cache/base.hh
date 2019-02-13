@@ -1013,6 +1013,7 @@ class BaseCache : public MemObject
 
     /** The number of times a HW-prefetched block is evicted w/o reference. */
     Stats::Scalar unusedPrefetches;
+    Stats::Scalar delayedReq;
 
     /** Number of blocks written back per thread. */
     Stats::Vector writebacks;
