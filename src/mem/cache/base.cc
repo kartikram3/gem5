@@ -2352,7 +2352,11 @@ BaseCache::CpuSidePort::recvTimingReq(PacketPtr pkt)
         //if the ports are all used up
         //since the cache uses req_time_1
 
-
+        //assert(!blocked);
+        //if (blocked){
+        //  fprintf(stderr,"Something weird is happening,"
+        //        "Express snoop is %d\n", pkt->isExpressSnoop());
+        //};
         cache->recvTimingReq(pkt);
         return true;
     }
@@ -2529,7 +2533,8 @@ void BaseCache::PortPacketQueue::sendDeferredPacket(){
         assert(isBlocked());
         switch(transferEntry.type){
            case 1:
-              panic("Should never queue cache request");
+              panic("Should never queue cache request, level is %d",
+                  (int)cache.level);
               assert(transferEntry.pkt);
               (dynamic_cast<Cache *>(&cache))
                   ->recvTimingReqQueued(transferEntry.pkt);
@@ -2599,7 +2604,9 @@ insert(uint32_t type, PacketPtr pkt, Addr addr, int isMiss){
      if (_portQueue.size() == num_ports) setBlocked();
   }else {
      assert(isBlocked());
-     if (type == 1) cache.blockedReq++;
+     if (type == 1){ panic("Inserting request into pending queue"
+                           "Cache level is %d\n", cache.level);
+       cache.blockedReq++; }
      else if (type == 2) cache.blockedResp++;
      else if (type == 8) cache.blockedCommit++;
      assert(!transfer);

@@ -411,7 +411,12 @@ Cache::handleTimingReqMiss(PacketPtr pkt, CacheBlk *blk, Tick forward_time,
 void
 Cache::recvTimingReq(PacketPtr pkt){
    //this is a timing req
-   pQ.insert(1,pkt,0,0);
+   if (!pkt->isExpressSnoop())
+     pQ.insert(1,pkt,0,0);
+   else
+     //express snoops finish right away
+     //no port contention there
+     recvTimingReqQueued(pkt);
    return;
 }
 
