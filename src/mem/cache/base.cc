@@ -367,7 +367,13 @@ BaseCache::handleTimingReqMiss(PacketPtr pkt, MSHR *mshr, CacheBlk *blk,
             allocateMissBuffer(pkt, forward_time);
         }
     }
+
+    if (pkt->load_seqNum && (level == 1)){
+       updateRecentMisses(pkt->getAddr(), pkt->load_seqNum);
+    }
 }
+
+
 
 void
 BaseCache::recvTimingReq(PacketPtr pkt)
@@ -516,6 +522,8 @@ BaseCache::recvTimingRespQueued(PacketPtr pkt)
         const bool allocate = (writeAllocator && mshr->wasWholeLineWrite) ?
             writeAllocator->allocate() : mshr->allocOnFill();
         blk = handleFill(pkt, blk, writebacks, allocate);
+        if (level == 1) blk->load_seqNum = mshr->load_seqNum;
+        if (level == 2) blk->load_timestamp = curTick();
         assert(blk != nullptr);
     }
 
@@ -579,9 +587,39 @@ BaseCache::recvTimingRespQueued(PacketPtr pkt)
 
    //if (pkt->isRead()) invalidateBlock(blk);
 
+    //no pending squashes
+    if (blk){
+      if (!mshrQueue.findMatch(makeBlkAddr(pkt->getAddr()),false) &&
+          !mshrQueue.findMatch(makeBlkAddr(pkt->getAddr()),false) &&
+          (level == 1)){
+         bool squashPresent = searchPending(pkt->getAddr(),blk->load_seqNum);
+         if (squashPresent && (!blk->isDirty()) &&
+             blk->isReadable() && blk->isWritable()){
+             cacheSquashesLate++;
+             invalidateBlock(blk);
+         }
+      }
+    }
 
     DPRINTF(CacheVerbose, "%s: Leaving with %s\n", __func__, pkt->print());
     delete pkt;
+}
+
+bool
+BaseCache::searchPending(Addr addr, uint64_t load_seqNum){
+   //the pending squashes are done
+   for (auto it = pendingSquashes.begin(); it != pendingSquashes.end();
+         it++){
+       Addr pending_addr = (*it).addr;
+       uint64_t pending_seqNum = (*it).seqNum;
+       if ((makeBlkAddr(pending_addr)) == (makeBlkAddr(addr))){
+         if (pending_seqNum <= (load_seqNum)){
+            pendingSquashes.erase(it);
+            return true;
+         } else{ return false;}
+       }
+   }
+   return false;
 }
 
 
@@ -967,10 +1005,24 @@ BaseCache::access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
 
     // Access block in the tags
     Cycles tag_latency(0);
+    Tick extra_latency = 0;
+
+
     blk = tags->accessBlock(pkt->getAddr(), pkt->isSecure(), tag_latency);
+
+    if ( blk && (level == 2)){
+      Tick t = curTick();
+      if ((t - blk->load_timestamp) < 500000 ){
+          extra_latency = 40;
+          extraLatencyAccesses++;
+      }
+    }
+
 
     // Calculate access latency
     lat = calculateAccessLatency(blk, tag_latency);
+
+    lat+=ticksToCycles(extra_latency);
 
     DPRINTF(Cache, "%s for %s %s\n", __func__, pkt->print(),
             blk ? "hit " + blk->print() : "miss");
@@ -1047,6 +1099,8 @@ BaseCache::access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
                 incMissCount(pkt);
                 return false;
             }
+            if (level == 1) blk->load_seqNum = pkt->load_seqNum;
+            if (level == 2) blk->load_timestamp = curTick();
 
             blk->status |= BlkReadable;
         }
@@ -1105,6 +1159,8 @@ BaseCache::access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
                     incMissCount(pkt);
                     return false;
                 }
+                if (level == 1) blk->load_seqNum = pkt->load_seqNum;
+                if (level == 2) blk->load_timestamp = curTick();
 
                 blk->status |= BlkReadable;
             }
@@ -1335,6 +1391,8 @@ BaseCache::invalidateBlock(CacheBlk *blk)
 {
     // If handling a block present in the Tags, let it do its invalidation
     // process, which will update stats and invalidate the block itself
+    blk->load_seqNum = 0;
+    blk->load_timestamp = 0;
     if (blk != tempBlock) {
         tags->invalidate(blk);
     } else {
@@ -1940,6 +1998,27 @@ BaseCache::regStats()
         .flags(nozero)
         ;
 
+
+   extraLatencyAccesses
+        .name(name() + ".extra_latency_accesses")
+        .desc("Some cache lines are not visible immediately")
+        ;
+
+   cacheSquashesReceived
+        .name(name() + ".total_attempted_cache_squashes")
+        .desc("Number of squashes sent to the cache")
+        ;
+
+   cacheSquashesImmediate
+        .name(name() + "squashed_immediately_upon_request")
+        .desc("Cache lines squashed immediately upon request")
+        ;
+
+   cacheSquashesLate
+        .name(name() + "squashed_later_when_fetch_finishes")
+        .desc("Cache lines squashed later when fetch finished")
+        ;
+
     delayedReq
         .name(name() + ".delayed_req")
         .desc("number of delayed requests into the cache")
@@ -2361,6 +2440,124 @@ BaseCache::CpuSidePort::recvTimingReq(PacketPtr pkt)
         return true;
     }
     return false;
+}
+
+inline Addr BaseCache::makeBlkAddr(Addr addr){
+   return (addr & ~63);
+}
+
+//receive the timing squash request
+bool BaseCache::checkPendingSquashes(Addr addr, uint64_t seqNum){
+   assert(level == 1);
+   bool flag = true;
+   for (auto it = pendingSquashes.begin();
+       it != pendingSquashes.end(); it++ ) {
+      //we use the pending squashes to our advantage
+      if (makeBlkAddr((*it).addr) == makeBlkAddr(addr)) {
+          if ( ((*it).seqNum) <= seqNum ) flag=false;
+      }
+   }
+
+   //insert if there was no pending squash
+   if (!flag)
+       pendingSquashes.push_back
+         ({makeBlkAddr(addr),seqNum,curTick()});
+
+   return flag;
+}
+
+//receive the timing squash request
+bool BaseCache::checkRecentMisses(Addr addr, uint64_t seqNum){
+   assert(level == 1);
+   bool flag = false;
+   for (auto it = recentMisses.begin(); it != recentMisses.end(); it++ ) {
+      //we use the pending squashes to our advantage
+      if (makeBlkAddr((*it).addr) == makeBlkAddr(addr)) {
+          if (((*it).seqNum) >= seqNum) flag=true;
+      }
+   }
+
+   //done
+   return flag;
+}
+
+void
+BaseCache::updateRecentMisses(Addr addr, uint64_t seqNum){
+   assert(level = 1);
+   bool flag_replace=false;
+   bool flag_found=false;
+   for (auto it = recentMisses.begin();
+       it != recentMisses.end(); it++) {
+        Addr miss_addr = (*it).addr;
+        uint64_t miss_seqNum = (*it).seqNum;
+        if (makeBlkAddr(miss_addr) == makeBlkAddr(addr)){
+            flag_found = true;
+            if (miss_seqNum < seqNum){
+                flag_replace = true;
+                auto it_erase = it;
+                it++;
+                recentMisses.erase(it_erase);
+                break;
+            }
+        }
+   }
+   if ((!flag_found) || (flag_replace))
+      recentMisses.push_back({addr, seqNum, curTick()});
+
+   //finally delete any old misses
+   for (auto it = recentMisses.begin();
+       it != recentMisses.end(); it++ ) {
+      if (seqNum - (*it).seqNum > 1000) {
+         auto it_erase = it;
+         it++;
+         recentMisses.erase(it_erase);
+      }
+   }
+}
+
+//we squash the involved cache line if it is in the cache
+void
+BaseCache::handleSquashL1(Addr addr, uint64_t seqNum){
+   CacheBlk *blk = tags->findBlock(addr, false);
+   if (blk){  //if the cache blk is there
+      if ((!blk->isDirty()) && blk->isReadable() &&
+          blk->isWritable() &&
+          (!mshrQueue.findPending(makeBlkAddr(addr),false)) &&
+          (!mshrQueue.findPending(makeBlkAddr(addr),true))){
+         cacheSquashesImmediate++;
+         invalidateBlock(blk);
+         memSidePort.sendTimingSquashReq(addr,seqNum);
+      }
+   }
+}
+
+//we squash the involved cache line if it is there
+void
+BaseCache::handleSquashL2
+   (Addr addr, uint64_t seqNum){
+   CacheBlk *blk = tags->findBlock(addr, false);
+   if (blk){  //if the cache blk is there
+      if ((!blk->isDirty()) && blk->isReadable() && blk->isWritable())
+         invalidateBlock(blk);
+   }
+}
+
+bool
+BaseCache::CpuSidePort::recvTimingSquashReq(Addr addr, uint64_t seqNum){
+  //receive the timing squash requests
+  cache->cacheSquashesReceived++;
+  if (cache->level == 1){
+     bool pendingSquash = cache->checkPendingSquashes(addr,seqNum);
+     bool recentMiss = cache->checkRecentMisses(addr,seqNum);
+     if (recentMiss && pendingSquash){
+         cache->handleSquashL1(addr,seqNum);
+     }
+  }else{
+     assert(cache->level == 2);
+     cache->handleSquashL2(addr, seqNum);
+  }
+  //TODO ... return false if something fails
+  return true;
 }
 
 Tick

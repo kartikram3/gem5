@@ -259,6 +259,9 @@ class Packet : public Printable
     typedef uint32_t FlagsType;
     typedef ::Flags<FlagsType> Flags;
 
+    /** Load seqNum **/
+    uint64_t load_seqNum;
+
   private:
 
     enum : FlagsType {
@@ -781,6 +784,7 @@ class Packet : public Printable
            _qosValue(0), headerDelay(0), snoopDelay(0),
            payloadDelay(0), senderState(NULL)
     {
+        load_seqNum = 0;
         if (req->hasPaddr()) {
             addr = req->getPaddr();
             flags.set(VALID_ADDR);
@@ -803,6 +807,7 @@ class Packet : public Printable
            _qosValue(0), headerDelay(0),
            snoopDelay(0), payloadDelay(0), senderState(NULL)
     {
+        load_seqNum = 0;
         if (req->hasPaddr()) {
             addr = req->getPaddr() & ~(_blkSize - 1);
             flags.set(VALID_ADDR);
@@ -830,6 +835,7 @@ class Packet : public Printable
            payloadDelay(pkt->payloadDelay),
            senderState(pkt->senderState)
     {
+        load_seqNum = 0;
         if (!clear_flags)
             flags.set(pkt->flags & COPY_FLAGS);
 

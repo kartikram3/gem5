@@ -114,6 +114,11 @@ class CoherentXBar : public BaseXBar
         virtual bool recvTimingReq(PacketPtr pkt)
         { return xbar.recvTimingReq(pkt, id); }
 
+        virtual bool recvTimingSquashReq
+          (Addr addr, uint64_t seqNum) override {
+          return xbar.recvTimingSquashReq(addr, seqNum);
+        }
+
         //Modified by Kartik ... the timing commit request is created
         virtual bool recvTimingCommitReq(Addr addr, int missType)
         { return xbar.recvTimingCommitReq(addr, missType); }
@@ -302,6 +307,7 @@ class CoherentXBar : public BaseXBar
     /** Function called by the port when the crossbar is recieving a Timing
       request packet.*/
     bool recvTimingReq(PacketPtr pkt, PortID slave_port_id);
+    bool recvTimingSquashReq(Addr addr, uint64_t seqNum);
 
     bool recvTimingCommitReq(Addr addr, int missType);
 

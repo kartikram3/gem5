@@ -222,6 +222,7 @@ class MasterPort : public BaseMasterPort
      * @return If the send was succesful or not.
     */
     bool sendTimingReq(PacketPtr pkt);
+    bool sendTimingSquashReq(Addr addr, uint64_t seqNum);
 
     //we would like to send a timing commit request
 
@@ -467,9 +468,12 @@ class SlavePort : public BaseSlavePort
      * Receive a timing request from the master port.
      */
     virtual bool recvTimingReq(PacketPtr pkt) = 0;
+    virtual bool recvTimingSquashReq(Addr addr, uint64_t seqNum)
+    { return true;}
 
     //Modified by Kartik
-    virtual bool recvTimingCommitReq(Addr addr, int missType) { return true;};
+    virtual bool recvTimingCommitReq(Addr addr, int missType)
+    { return true;}
 
     /**
      * Availability request from the master port.

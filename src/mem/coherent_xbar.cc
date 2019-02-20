@@ -156,6 +156,17 @@ CoherentXBar::recvTimingCommitReq(Addr addr, int missType){
 //helps to finish the solution
 
 bool
+CoherentXBar::recvTimingSquashReq(Addr addr, uint64_t seqNum){
+  //the timing squash request is sent to the cache
+  PortID temp = 10;
+  AddrRange addr_temp;
+  addr_temp = RangeSize(addr, 64);
+  temp = findPort(addr_temp);
+  masterPorts[temp]->sendTimingSquashReq(addr,seqNum);
+  return true;
+}
+
+bool
 CoherentXBar::recvTimingReq(PacketPtr pkt, PortID slave_port_id)
 {
     // determine the source port based on the id

@@ -66,6 +66,7 @@ MSHR::MSHR() : downstreamPending(false),
                postInvalidate(false), postDowngrade(false),
                wasWholeLineWrite(false), isForward(false)
 {
+  load_seqNum=0;
 }
 
 MSHR::TargetList::TargetList()

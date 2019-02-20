@@ -88,6 +88,13 @@ class MasterPort;
 class QueueEntry;
 struct BaseCacheParams;
 
+typedef struct AddrInfo{
+   Addr addr;
+   uint64_t seqNum;
+   Tick tick;
+} AddrInfo;
+
+
 /**
  * A basic cache interface. Implements some common functions for speed.
  */
@@ -103,6 +110,18 @@ class BaseCache : public MemObject
     };
 
   public:
+
+    //Two buffers -- pendingSquashes and recentMisses
+    std::list<AddrInfo> pendingSquashes;
+    std::list<AddrInfo> recentMisses;
+    void handleSquashL1(Addr addr, uint64_t seqNum);
+    void handleSquashL2(Addr addr, uint64_t seqNum);
+    inline Addr makeBlkAddr(Addr addr);
+    bool checkPendingSquashes(Addr addr, uint64_t seqNum);
+    bool checkRecentMisses(Addr addr, uint64_t seqNum);
+    void updateRecentMisses(Addr addr, uint64_t seqNum);
+    bool searchPending(Addr addr, uint64_t seqNum);
+
 
     /**
      * Reasons for caches to be blocked.
@@ -315,6 +334,7 @@ class BaseCache : public MemObject
 
         bool isBlocked() const { return blocked; }
 
+
         virtual bool recvTimingCommitReq (Addr addr, int missType){
             return true;
         }
@@ -351,6 +371,8 @@ class BaseCache : public MemObject
 
         // a pointer to our specific cache implementation
         BaseCache *cache;
+
+        virtual bool recvTimingSquashReq(Addr addr, uint64_t seqNum) override;
 
         //Port timers indicating
         //whether the cache should be
@@ -1011,6 +1033,12 @@ class BaseCache : public MemObject
     /** The average number of cycles blocked for each blocked cause. */
     Stats::Formula avg_blocked;
 
+    /* Squash Statistics */
+    Stats::Scalar extraLatencyAccesses;
+    Stats::Scalar cacheSquashesReceived;
+    Stats::Scalar cacheSquashesImmediate;
+    Stats::Scalar cacheSquashesLate;
+
     /** The number of times a HW-prefetched block is evicted w/o reference. */
     Stats::Scalar unusedPrefetches;
     Stats::Scalar delayedReq;
@@ -1125,6 +1153,9 @@ class BaseCache : public MemObject
         MSHR *mshr = mshrQueue.allocate(pkt->getBlockAddr(blkSize), blkSize,
                                         pkt, time, order++,
                                         allocOnFill(pkt->cmd));
+
+        if (level == 1) mshr->load_seqNum = pkt->load_seqNum;
+        else mshr->load_seqNum = 0;
 
         if (mshrQueue.isFull()) {
             setBlocked((BlockedCause)MSHRQueue_MSHRs);

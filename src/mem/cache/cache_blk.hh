@@ -88,6 +88,9 @@ class CacheBlk : public ReplaceableEntry
     /** Task Id associated with this block */
     uint32_t task_id;
 
+    uint64_t load_seqNum;
+    uint64_t load_timestamp;
+
     /** Data block tag value. */
     Addr tag;
     /**
@@ -168,6 +171,8 @@ class CacheBlk : public ReplaceableEntry
   public:
     CacheBlk() : data(nullptr), tickInserted(0)
     {
+        load_seqNum = 0;
+        load_timestamp = 0;
         invalidate();
     }
 

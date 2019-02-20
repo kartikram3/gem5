@@ -117,7 +117,7 @@ class MSHR : public QueueEntry, public Printable
     bool postDowngrade;
 
   public:
-
+    uint64_t load_seqNum;
     /** Track if we sent this as a whole line write or not */
     bool wasWholeLineWrite;
 

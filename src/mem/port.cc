@@ -184,6 +184,15 @@ MasterPort::sendTimingReq(PacketPtr pkt)
 }
 
 bool
+MasterPort::sendTimingSquashReq(Addr addr, uint64_t seqNum){
+   //send the squash request
+   return _slavePort->recvTimingSquashReq
+     (addr,seqNum);
+}
+
+
+
+bool
 MasterPort::sendTimingCommitReq(Addr addr, int missType)
 {
     //assert(pkt->isRequest());

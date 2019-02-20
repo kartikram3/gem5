@@ -1032,8 +1032,10 @@ LSQUnit<Impl>::removeMSHR(InstSeqNum seqNum)
 //associated with the cache
 template <class Impl>
 void
-LSQUnit<Impl>::executeLoadSquash(const InstSeqNum &squashed_num){
-
+LSQUnit<Impl>::executeLoadSquash(Addr addr, uint64_t seqNum){
+   //squash the associated loads
+   dcachePort->sendTimingSquashReq(addr,seqNum);
+   return;
 }
 
 
@@ -1065,7 +1067,8 @@ LSQUnit<Impl>::squash(const InstSeqNum &squashed_num)
 
         DynInstPtr load_inst =  loadQueue[load_idx];
 
-        executeLoadSquash(load_inst);
+        if (load_inst->lowAddr != -1)
+           executeLoadSquash(load_inst->lowAddr, load_inst->seqNum);
 
         loadQueue[load_idx] = NULL;
         --loads;

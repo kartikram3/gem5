@@ -178,6 +178,8 @@ class LSQUnit {
     /** Squashes all instructions younger than a specific sequence number. */
     void squash(const InstSeqNum &squashed_num);
 
+    void executeLoadSquash(Addr addr, uint64_t seqNum);
+
     /** Returns if there is a memory ordering violation. Value is reset upon
      * call to getMemDepViolator().
      */
@@ -784,11 +786,14 @@ LSQUnit<Impl>::read(const RequestPtr &req,
     if (!TheISA::HasUnalignedMemAcc || !sreqLow) {
         // Point the first packet at the main data packet.
         fst_data_pkt = data_pkt;
+        fst_data_pkt->load_seqNum = load_inst->seqNum;
         load_inst->lowAddr = data_pkt->getAddr();
     } else {
         // Create the split packets.
         fst_data_pkt = Packet::createRead(sreqLow);
         snd_data_pkt = Packet::createRead(sreqHigh);
+        fst_data_pkt->load_seqNum = load_inst->seqNum;
+        snd_data_pkt->load_seqNum = load_inst->seqNum;
 
         //useful for commit
         load_inst->lowAddr = fst_data_pkt->getAddr();
