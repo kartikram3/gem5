@@ -1027,12 +1027,23 @@ LSQUnit<Impl>::removeMSHR(InstSeqNum seqNum)
     }
 }*/
 
+//Modified by Kartik
+//We are able to squash the instructions
+//associated with the cache
+template <class Impl>
+void
+LSQUnit<Impl>::executeLoadSquash(const InstSeqNum &squashed_num){
+
+}
+
+
 template <class Impl>
 void
 LSQUnit<Impl>::squash(const InstSeqNum &squashed_num)
 {
     DPRINTF(LSQUnit, "Squashing until [sn:%lli]!"
             "(Loads:%i Stores:%i)\n", squashed_num, loads, stores);
+
 
     int load_idx = loadTail;
     decrLdIdx(load_idx);
@@ -1051,6 +1062,11 @@ LSQUnit<Impl>::squash(const InstSeqNum &squashed_num)
 
         // Clear the smart pointer to make sure it is decremented.
         loadQueue[load_idx]->setSquashed();
+
+        DynInstPtr load_inst =  loadQueue[load_idx];
+
+        executeLoadSquash(load_inst);
+
         loadQueue[load_idx] = NULL;
         --loads;
 
