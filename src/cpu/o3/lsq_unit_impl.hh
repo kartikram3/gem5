@@ -749,8 +749,8 @@ LSQUnit<Impl>::commitLoad()
          //We send the timing commit
          //request regardless of other
          //issues
-         dcachePort->sendTimingCommitReq(inst->lowAddr,
-                                         inst->isMiss);
+         //dcachePort->sendTimingCommitReq(inst->lowAddr,
+         //                                inst->isMiss);
          //dcachePort->sendTimingCommitReq(inst->highAddr);
          //fprintf(stderr,"Sending extra commit req %lx\n", inst->lowAddr );
       }

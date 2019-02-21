@@ -368,8 +368,10 @@ BaseCache::handleTimingReqMiss(PacketPtr pkt, MSHR *mshr, CacheBlk *blk,
         }
     }
 
-    if (pkt->load_seqNum && (level == 1)){
-       updateRecentMisses(pkt->getAddr(), pkt->load_seqNum);
+    if (pkt){
+      if (pkt->load_seqNum && (level == 1)){
+         updateRecentMisses(pkt->getAddr(), pkt->load_seqNum);
+      }
     }
 }
 
