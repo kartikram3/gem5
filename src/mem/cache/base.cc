@@ -591,8 +591,8 @@ BaseCache::recvTimingRespQueued(PacketPtr pkt)
 
     //no pending squashes
     if (blk){
-      if (!mshrQueue.findMatch(makeBlkAddr(pkt->getAddr()),false) &&
-          !mshrQueue.findMatch(makeBlkAddr(pkt->getAddr()),false) &&
+      if ((!mshrQueue.findMatch(makeBlkAddr(pkt->getAddr()),false)) &&
+          (!mshrQueue.findMatch(makeBlkAddr(pkt->getAddr()),true)) &&
           (level == 1)){
          bool squashPresent = searchPending(pkt->getAddr(),blk->load_seqNum);
          if (squashPresent && (!blk->isDirty()) &&
@@ -2461,11 +2461,11 @@ bool BaseCache::checkPendingSquashes(Addr addr, uint64_t seqNum){
    }
 
    //insert if there was no pending squash
-   if (!flag)
+   if (flag)
        pendingSquashes.push_back
          ({makeBlkAddr(addr),seqNum,curTick()});
 
-   return flag;
+   return !flag;
 }
 
 //receive the timing squash request
