@@ -75,9 +75,13 @@ typedef uint64_t PacketId;
 
 class MemCmd
 {
-    friend class Packet;
+  friend class Packet;
 
   public:
+
+    bool isBypass;  //if it accessed a new cache line
+                    //or needs to change coherence state,
+                    //it is a bypass
     /**
      * List of all commands associated with a packet.
      */
