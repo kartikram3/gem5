@@ -57,14 +57,15 @@
 #include "arch/types.hh"
 #include "base/statistics.hh"
 #include "config/the_isa.hh"
+#include "cpu/activity.hh"
+#include "cpu/base.hh"
 #include "cpu/o3/comm.hh"
 #include "cpu/o3/cpu_policy.hh"
 #include "cpu/o3/scoreboard.hh"
 #include "cpu/o3/thread_state.hh"
-#include "cpu/activity.hh"
-#include "cpu/base.hh"
 #include "cpu/simple_thread.hh"
 #include "cpu/timebuf.hh"
+
 //#include "cpu/o3/thread_context.hh"
 #include "params/DerivO3CPU.hh"
 #include "sim/process.hh"
@@ -173,6 +174,15 @@ class FullO3CPU : public BaseO3CPU
             : MasterPort(_cpu->name() + ".dcache_port", _cpu), lsq(_lsq),
               cpu(_cpu)
         { }
+
+        void addBypassAddr(Addr addr, ContextID cid) {
+            lsq->addBypassAddr(addr,cid);
+            return ;
+        }
+
+        virtual void recvBypassAddr(Addr addr, ContextID cid)override {
+            addBypassAddr(addr,cid);
+        }
 
       protected:
 

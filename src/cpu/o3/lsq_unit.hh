@@ -84,6 +84,8 @@ class LSQUnit {
     typedef typename Impl::CPUPol::LSQ LSQ;
     typedef typename Impl::CPUPol::IssueStruct IssueStruct;
 
+    void addBypassAddr(Addr addr, ContextID cid);
+
   public:
     /** Constructs an LSQ unit. init() must be called prior to use. */
     LSQUnit(uint32_t lqEntries, uint32_t sqEntries);

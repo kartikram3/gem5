@@ -358,6 +358,16 @@ LSQ<Impl>::recvTimingResp(PacketPtr pkt)
 
 template <class Impl>
 void
+LSQ<Impl>::addBypassAddr(Addr addr, ContextID cid){
+    //set the bypass address to the cache line
+    bypassAddr = addr;
+    thread[cpu->contextToThread(cid)]
+      .addBypassAddr(addr, cid);
+    return ;
+}
+
+template <class Impl>
+void
 LSQ<Impl>::recvTimingSnoopReq(PacketPtr pkt)
 {
     DPRINTF(LSQ, "received pkt for addr:%#x %s\n", pkt->getAddr(),

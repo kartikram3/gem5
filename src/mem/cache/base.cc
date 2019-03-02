@@ -587,7 +587,7 @@ BaseCache::recvTimingRespQueued(PacketPtr pkt)
     // copy writebacks to write buffer
     doWritebacks(writebacks, forward_time);
 
-   //if (pkt->isRead()) invalidateBlock(blk);
+    //if (pkt->isRead()) invalidateBlock(blk);
 
     //no pending squashes
     if (blk){

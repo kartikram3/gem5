@@ -175,6 +175,10 @@ class MasterPort : public BaseMasterPort
 
   public:
 
+    virtual void recvBypassAddr(Addr addr, ContextID cid)
+    { return; }
+
+
     MasterPort(const std::string& name, MemObject* owner,
                PortID id = InvalidPortID);
     virtual ~MasterPort();
@@ -356,6 +360,10 @@ class SlavePort : public BaseSlavePort
     MasterPort* _masterPort;
 
   public:
+
+    virtual void sendBypassAddr(Addr addr, ContextID cid)
+    { _masterPort->recvBypassAddr(addr,cid); }
+
 
     SlavePort(const std::string& name, MemObject* owner,
               PortID id = InvalidPortID);

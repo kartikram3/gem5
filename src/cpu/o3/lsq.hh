@@ -47,8 +47,8 @@
 #include <map>
 #include <queue>
 
-#include "cpu/o3/lsq_unit.hh"
 #include "cpu/inst_seq.hh"
+#include "cpu/o3/lsq_unit.hh"
 #include "mem/port.hh"
 #include "sim/sim_object.hh"
 
@@ -61,6 +61,9 @@ class LSQ {
     typedef typename Impl::DynInstPtr DynInstPtr;
     typedef typename Impl::CPUPol::IEW IEW;
     typedef typename Impl::CPUPol::LSQUnit LSQUnit;
+
+    Addr bypassAddr;
+    void addBypassAddr(Addr addr, ContextID cid);
 
     /** SMT policy. */
     enum LSQPolicy {
@@ -295,6 +298,7 @@ class LSQ {
      * @param pkt Response packet from the memory sub-system
      */
     bool recvTimingResp(PacketPtr pkt);
+    void setBypassAddr(Addr addr);
 
     void recvTimingSnoopReq(PacketPtr pkt);
 

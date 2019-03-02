@@ -150,6 +150,9 @@ LSQUnit<Impl>::completeDataAccess(PacketPtr pkt)
               ; //do nothing
     }
 
+    if (pkt->isBypass) inst->isBypass = true;
+    else inst->isBypass = false;
+
     cpu->ppDataAccessComplete->notify(std::make_pair(inst, pkt));
 
     //we have updated the state saying
@@ -740,6 +743,9 @@ LSQUnit<Impl>::commitLoad()
 
     DynInstPtr inst = loadQueue[loadHead];
 
+    //if it is a bypass addr, then add extra
+    //contention here
+
     //put it into the commit vector
     //the committed load needs to be
     //also committed into the cache
@@ -761,6 +767,14 @@ LSQUnit<Impl>::commitLoad()
     incrLdIdx(loadHead);
 
     --loads;
+}
+
+
+template <class Impl>
+void
+LSQUnit<Impl>::addBypassAddr(Addr addr, ContextID cid){
+  //we add the bypassed cache line addresses
+  return;
 }
 
 template <class Impl>
@@ -1035,6 +1049,8 @@ void
 LSQUnit<Impl>::executeLoadSquash(Addr addr, uint64_t seqNum){
    //squash the associated loads
    dcachePort->sendTimingSquashReq(addr,seqNum);
+
+   //if there was a bypass addr, then add a bypass here
    return;
 }
 

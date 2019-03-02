@@ -79,7 +79,6 @@ class MemCmd
 
   public:
 
-    bool isBypass;  //if it accessed a new cache line
                     //or needs to change coherence state,
                     //it is a bypass
     /**
@@ -265,6 +264,8 @@ class Packet : public Printable
 
     /** Load seqNum **/
     uint64_t load_seqNum;
+    bool isBypass;  //if it accessed a new cache line
+
 
   private:
 

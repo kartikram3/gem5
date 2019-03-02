@@ -293,6 +293,15 @@ Cache::recvTimingSnoopRespQueued(PacketPtr pkt)
 
         DPRINTF(Cache, "Got prefetch response from above for addr "
                 "%#llx (%s)\n", pkt->getAddr(), pkt->isSecure() ? "s" : "ns");
+
+        //mark the response as coming from a different cache
+        pkt->isBypass = true;
+
+        //notify the owner that the addr is a
+        //bypass addr
+        cpuSidePort.sendBypassAddr
+           (pkt->getAddr(),pkt->req->contextId());
+
         recvTimingResp(pkt);
         return;
     }

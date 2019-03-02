@@ -84,6 +84,7 @@ class BaseDynInst : public ExecContext, public RefCounted
     Addr lowAddr;
     Addr highAddr;
     int32_t isMiss;
+    bool isBypass;
 
 
     // Typedef for the CPU.

@@ -334,7 +334,6 @@ class BaseCache : public MemObject
 
         bool isBlocked() const { return blocked; }
 
-
         virtual bool recvTimingCommitReq (Addr addr, int missType){
             return true;
         }
