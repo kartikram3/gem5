@@ -175,13 +175,14 @@ class FullO3CPU : public BaseO3CPU
               cpu(_cpu)
         { }
 
-        void addBypassAddr(Addr addr, ContextID cid) {
-            lsq->addBypassAddr(addr,cid);
+        void addBypassAddr(Addr addr, uint64_t owner, uint64_t seqNum) {
+            //lsq->addBypassAddr(addr,owner,seqNum);
             return ;
         }
 
-        virtual void recvBypassAddr(Addr addr, ContextID cid)override {
-            addBypassAddr(addr,cid);
+        virtual void recvBypassAddr(Addr addr, uint64_t owner,
+                                    uint64_t seqNum)override {
+            addBypassAddr(addr,owner,seqNum);
         }
 
       protected:

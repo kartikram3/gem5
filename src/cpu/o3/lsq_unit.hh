@@ -77,6 +77,12 @@ struct DerivO3CPUParams;
  */
 template <class Impl>
 class LSQUnit {
+
+  typedef struct BypassInfo {
+      Addr addr;
+      uint64_t seqNum;
+  } BypassInfo;
+
   public:
     typedef typename Impl::O3CPU O3CPU;
     typedef typename Impl::DynInstPtr DynInstPtr;
@@ -84,7 +90,8 @@ class LSQUnit {
     typedef typename Impl::CPUPol::LSQ LSQ;
     typedef typename Impl::CPUPol::IssueStruct IssueStruct;
 
-    void addBypassAddr(Addr addr, ContextID cid);
+    void addBypassAddr(Addr addr, uint64_t owner, uint64_t seqNum);
+    std::list<BypassInfo> bypassList;
 
   public:
     /** Constructs an LSQ unit. init() must be called prior to use. */
@@ -493,6 +500,7 @@ class LSQUnit {
     //Modified by Kartik
     Stats::Scalar l1Misses;
     Stats::Scalar l2Misses;
+    Stats::Scalar exposures;
 
 
 
@@ -776,6 +784,8 @@ LSQUnit<Impl>::read(const RequestPtr &req,
     PacketPtr data_pkt = Packet::createRead(req);
     PacketPtr fst_data_pkt = NULL;
     PacketPtr snd_data_pkt = NULL;
+    req->seqNum = load_inst->seqNum;
+    req->owner = lsqID;
 
     data_pkt->dataStatic(load_inst->memData);
 

@@ -251,6 +251,8 @@ BaseCache::inRange(Addr addr) const
 void
 BaseCache::handleTimingReqHit(PacketPtr pkt, CacheBlk *blk, Tick request_time)
 {
+    CacheBlk *blk_1;
+
     if (pkt->needsResponse()) {
         pkt->makeTimingResponse();
         // @todo: Make someone pay for this
@@ -272,6 +274,25 @@ BaseCache::handleTimingReqHit(PacketPtr pkt, CacheBlk *blk, Tick request_time)
         // here as well
         pendingDelete.reset(pkt);
     }
+
+    //get the owner of the cache blk
+    blk_1 = nullptr;
+    blk_1=tags->findBlock(pkt->getAddr(),false);
+    if (blk_1){
+       //check the blk_1 owner
+       uint64_t owner = blk_1->owner;
+       if ((level == 2) && (owner != -1)
+            && (pkt->req->owner != -1)){ //only for L2 cache
+         if (owner != pkt->req->owner){
+           fprintf(stderr,"blk owner is %d, pkt owner is %d",
+                    (int)owner, (int)pkt->req->owner);
+           //may cause coherence change, so bypass
+           pkt->isBypass = true;
+         }else{
+           pkt->isBypass = false;
+         }
+       }
+    }
 }
 
 void
@@ -290,6 +311,17 @@ BaseCache::handleTimingReqMiss(PacketPtr pkt, MSHR *mshr, CacheBlk *blk,
         /// for any conflicting requests to the same block
 
         //@todo remove hw_pf here
+
+        //it is a bypass because someone fetched it before us
+        if (pkt)
+        if ((level == 2) && (pkt->req->owner != -1)
+             && (mshr->owner != -1)){
+          if (mshr->owner != pkt->req->owner)
+            pkt->isBypass = true;
+          else{
+            pkt->isBypass = false;
+          }
+        }
 
         // Coalesce unless it was a software prefetch (see above).
         if (pkt) {
@@ -525,7 +557,9 @@ BaseCache::recvTimingRespQueued(PacketPtr pkt)
             writeAllocator->allocate() : mshr->allocOnFill();
         blk = handleFill(pkt, blk, writebacks, allocate);
         if (level == 1) blk->load_seqNum = mshr->load_seqNum;
-        if (level == 2) blk->load_timestamp = curTick();
+        if (level == 2) { blk->load_timestamp = curTick();
+                          blk->owner = pkt->req->owner;
+        }
         assert(blk != nullptr);
     }
 
@@ -601,6 +635,15 @@ BaseCache::recvTimingRespQueued(PacketPtr pkt)
              invalidateBlock(blk);
          }
       }
+    }
+
+    if (level == 1){
+      if (pkt->isBypass){
+         //check whether bypass is necessary
+         fprintf(stderr, "Bypass packet found\n");
+         pkt->req->isBypass = true;
+      } else
+         pkt->req->isBypass = false;
     }
 
     DPRINTF(CacheVerbose, "%s: Leaving with %s\n", __func__, pkt->print());
@@ -1102,7 +1145,9 @@ BaseCache::access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
                 return false;
             }
             if (level == 1) blk->load_seqNum = pkt->load_seqNum;
-            if (level == 2) blk->load_timestamp = curTick();
+            if (level == 2) { blk->load_timestamp = curTick();
+                              blk->owner = pkt->req->owner;
+            }
 
             blk->status |= BlkReadable;
         }
@@ -1162,7 +1207,9 @@ BaseCache::access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
                     return false;
                 }
                 if (level == 1) blk->load_seqNum = pkt->load_seqNum;
-                if (level == 2) blk->load_timestamp = curTick();
+                if (level == 2) { blk->load_timestamp = curTick();
+                                  blk->owner = pkt->req->owner;
+                }
 
                 blk->status |= BlkReadable;
             }
@@ -1394,6 +1441,7 @@ BaseCache::invalidateBlock(CacheBlk *blk)
     // If handling a block present in the Tags, let it do its invalidation
     // process, which will update stats and invalidate the block itself
     blk->load_seqNum = 0;
+    blk->owner = -1;
     blk->load_timestamp = 0;
     if (blk != tempBlock) {
         tags->invalidate(blk);

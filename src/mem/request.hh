@@ -91,6 +91,9 @@ class Request
     typedef uint8_t ArchFlagsType;
     typedef ::Flags<FlagsType> Flags;
 
+    uint64_t seqNum;
+    uint64_t owner;
+
     enum : FlagsType {
         /**
          * Architecture specific flags.
@@ -258,6 +261,7 @@ class Request
 
   //Modified by Kartik
   int32_t isCacheMiss;
+  bool isBypass;
 
   //Modified by Kartik
   int32_t isMiss(){ return isCacheMiss; }
@@ -407,7 +411,10 @@ class Request
           _extraData(0), _contextId(0), _pc(0),
           _reqInstSeqNum(0), atomicOpFunctor(nullptr), translateDelta(0),
           accessDelta(0), depth(0)
-    {}
+    {
+       isBypass = false;
+       owner = -1;
+    }
 
     Request(Addr paddr, unsigned size, Flags flags, MasterID mid,
             InstSeqNum seq_num, ContextID cid)
@@ -417,9 +424,11 @@ class Request
           _reqInstSeqNum(seq_num), atomicOpFunctor(nullptr), translateDelta(0),
           accessDelta(0), depth(0)
     {
+        owner = -1;
         setPhys(paddr, size, flags, mid, curTick());
         setContext(cid);
         privateFlags.set(VALID_INST_SEQ_NUM);
+        isBypass = false;
     }
 
     /**
@@ -434,6 +443,8 @@ class Request
           _reqInstSeqNum(0), atomicOpFunctor(nullptr), translateDelta(0),
           accessDelta(0), depth(0)
     {
+        owner = -1;
+        isBypass = false;
         setPhys(paddr, size, flags, mid, curTick());
     }
 
@@ -444,6 +455,8 @@ class Request
           _reqInstSeqNum(0), atomicOpFunctor(nullptr), translateDelta(0),
           accessDelta(0), depth(0)
     {
+        owner = -1;
+        isBypass = false;
         setPhys(paddr, size, flags, mid, time);
     }
 
@@ -455,6 +468,8 @@ class Request
           _reqInstSeqNum(0), atomicOpFunctor(nullptr), translateDelta(0),
           accessDelta(0), depth(0)
     {
+        owner = -1;
+        isBypass = false;
         setPhys(paddr, size, flags, mid, time);
         privateFlags.set(VALID_PC);
     }
@@ -467,6 +482,8 @@ class Request
           _reqInstSeqNum(0), atomicOpFunctor(nullptr), translateDelta(0),
           accessDelta(0), depth(0)
     {
+        owner = -1;
+        isBypass = false;
         setVirt(asid, vaddr, size, flags, mid, pc);
         setContext(cid);
     }
@@ -475,6 +492,8 @@ class Request
             MasterID mid, Addr pc, ContextID cid,
             AtomicOpFunctor *atomic_op)
     {
+        owner = -1;
+        isBypass = false;
         setVirt(asid, vaddr, size, flags, mid, pc, atomic_op);
         setContext(cid);
     }
@@ -492,6 +511,8 @@ class Request
           translateDelta(other.translateDelta),
           accessDelta(other.accessDelta), depth(other.depth)
     {
+        owner = -1;
+        isBypass = false;
         if (other.atomicOpFunctor)
             atomicOpFunctor = (other.atomicOpFunctor)->clone();
         else

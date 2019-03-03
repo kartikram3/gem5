@@ -90,6 +90,7 @@ class CacheBlk : public ReplaceableEntry
 
     uint64_t load_seqNum;
     uint64_t load_timestamp;
+    uint64_t owner;
 
     /** Data block tag value. */
     Addr tag;
@@ -173,6 +174,7 @@ class CacheBlk : public ReplaceableEntry
     {
         load_seqNum = 0;
         load_timestamp = 0;
+        owner = -1;
         invalidate();
     }
 

@@ -63,7 +63,8 @@ class LSQ {
     typedef typename Impl::CPUPol::LSQUnit LSQUnit;
 
     Addr bypassAddr;
-    void addBypassAddr(Addr addr, ContextID cid);
+    void addBypassAddr(Addr addr, uint64_t owner,
+          uint64_t seqNum);
 
     /** SMT policy. */
     enum LSQPolicy {

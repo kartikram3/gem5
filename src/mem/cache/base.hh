@@ -1153,6 +1153,9 @@ class BaseCache : public MemObject
                                         pkt, time, order++,
                                         allocOnFill(pkt->cmd));
 
+        if (level == 2) mshr->owner = pkt->req->owner;
+        else mshr->owner = -1;
+
         if (level == 1) mshr->load_seqNum = pkt->load_seqNum;
         else mshr->load_seqNum = 0;
 

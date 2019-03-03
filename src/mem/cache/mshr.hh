@@ -78,6 +78,8 @@ class MSHR : public QueueEntry, public Printable
     template<typename Entry>
     friend class Queue;
     friend class MSHRQueue;
+  public:
+    uint64_t owner;
 
   private:
 

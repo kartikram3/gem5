@@ -358,11 +358,12 @@ LSQ<Impl>::recvTimingResp(PacketPtr pkt)
 
 template <class Impl>
 void
-LSQ<Impl>::addBypassAddr(Addr addr, ContextID cid){
+LSQ<Impl>::addBypassAddr(Addr addr, uint64_t owner,
+        uint64_t seqNum){
     //set the bypass address to the cache line
     bypassAddr = addr;
-    thread[cpu->contextToThread(cid)]
-      .addBypassAddr(addr, cid);
+    thread[cpu->contextToThread(owner)]
+      .addBypassAddr(addr, owner, seqNum);
     return ;
 }
 

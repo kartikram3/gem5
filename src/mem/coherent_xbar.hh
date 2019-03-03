@@ -184,6 +184,13 @@ class CoherentXBar : public BaseXBar
         virtual bool recvTimingResp(PacketPtr pkt)
         { return xbar.recvTimingResp(pkt, id); }
 
+        virtual void recvBypassAddr(Addr addr, uint64_t owner,
+                                uint64_t seqNum) override{
+          //actually, we never use this function
+          panic("Should not use recvBypassAddr for the xbar\n");
+          return;
+        }
+
         /**
          * When receiving a timing snoop request, pass it to the crossbar.
          */

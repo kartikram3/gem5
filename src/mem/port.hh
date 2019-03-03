@@ -175,8 +175,9 @@ class MasterPort : public BaseMasterPort
 
   public:
 
-    virtual void recvBypassAddr(Addr addr, ContextID cid)
-    { return; }
+    virtual void recvBypassAddr(Addr addr, uint64_t owner,
+                                uint64_t seqNum)
+    {return;}
 
 
     MasterPort(const std::string& name, MemObject* owner,
@@ -361,8 +362,9 @@ class SlavePort : public BaseSlavePort
 
   public:
 
-    virtual void sendBypassAddr(Addr addr, ContextID cid)
-    { _masterPort->recvBypassAddr(addr,cid); }
+    virtual void sendBypassAddr(Addr addr, uint64_t owner,
+                                 uint64_t seqNum)
+    { _masterPort->recvBypassAddr(addr,owner, seqNum); }
 
 
     SlavePort(const std::string& name, MemObject* owner,

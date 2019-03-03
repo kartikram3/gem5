@@ -150,13 +150,27 @@ LSQUnit<Impl>::completeDataAccess(PacketPtr pkt)
               ; //do nothing
     }
 
-    if (pkt->isBypass) inst->isBypass = true;
+    if (pkt->req->isBypass){
+        fprintf(stderr, "Found bypass address\n");
+        inst->isBypass = true; }
     else inst->isBypass = false;
+
+    //don't complete the data access immediately
+    //add a validation stall to the mix if required
+    //the cpu will send additional accesses
+    //we shall wait for the second access and then do the
+    //validation ... what happens exactly ?
+    //schedule the DataAccessComplete after the validation
+    //has happened ... say after 10 cycles
+
+
 
     cpu->ppDataAccessComplete->notify(std::make_pair(inst, pkt));
 
     //we have updated the state saying
     //whether it is a cache miss or not
+
+
 
     delete state;
 }
@@ -242,6 +256,11 @@ LSQUnit<Impl>::regStats()
     l2Misses
         .name(name() + ".l2_misses_committed")
         .desc("Number of loads that missed L2 and needed to be committed");
+
+
+   exposures
+        .name(name() + ".exposures")
+        .desc("Extra checks to find out whether the address changed");
 
     //TODO ... also model extra memory contention
 
@@ -746,6 +765,28 @@ LSQUnit<Impl>::commitLoad()
     //if it is a bypass addr, then add extra
     //contention here
 
+    for (auto it = bypassList.begin(); it != bypassList.end();
+          it++){
+       if (inst->seqNum == (*it).seqNum){
+           dcachePort->sendTimingCommitReq((*it).addr,0);
+           auto it_erase = it;
+           it++;
+           bypassList.erase(it_erase);
+           exposures++;
+       };
+    }
+
+    //erase old bypassed addresses
+    for (auto it = bypassList.begin(); it != bypassList.end();
+          it++){
+       if (inst->seqNum - (*it).seqNum > 5000){
+            auto it_erase = it;
+            it++;
+            bypassList.erase(it_erase);
+       };
+    }
+
+
     //put it into the commit vector
     //the committed load needs to be
     //also committed into the cache
@@ -772,8 +813,10 @@ LSQUnit<Impl>::commitLoad()
 
 template <class Impl>
 void
-LSQUnit<Impl>::addBypassAddr(Addr addr, ContextID cid){
+LSQUnit<Impl>::addBypassAddr(Addr addr, uint64_t owner,
+           uint64_t seqNum){
   //we add the bypassed cache line addresses
+  bypassList.push_back({addr,seqNum});
   return;
 }
 
@@ -1050,7 +1093,15 @@ LSQUnit<Impl>::executeLoadSquash(Addr addr, uint64_t seqNum){
    //squash the associated loads
    dcachePort->sendTimingSquashReq(addr,seqNum);
 
-   //if there was a bypass addr, then add a bypass here
+   //if there was a bypass addr, then add a bypass request
+   //here
+   for (auto it=bypassList.begin() ; it != bypassList.end(); it++){
+      if (seqNum == ((*it).seqNum) ){
+         auto it_erase = it;
+         it++;
+         bypassList.erase(it_erase);
+      }
+   }
    return;
 }
 

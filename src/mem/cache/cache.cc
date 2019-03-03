@@ -295,12 +295,10 @@ Cache::recvTimingSnoopRespQueued(PacketPtr pkt)
                 "%#llx (%s)\n", pkt->getAddr(), pkt->isSecure() ? "s" : "ns");
 
         //mark the response as coming from a different cache
-        pkt->isBypass = true;
+        //pkt->isBypass = true;
 
         //notify the owner that the addr is a
-        //bypass addr
-        cpuSidePort.sendBypassAddr
-           (pkt->getAddr(),pkt->req->contextId());
+        //bypass addr ... this helps get the result
 
         recvTimingResp(pkt);
         return;
@@ -1209,6 +1207,13 @@ Cache::recvTimingSnoopReqQueued(PacketPtr pkt)
 
     Addr blk_addr = pkt->getBlockAddr(blkSize);
     MSHR *mshr = mshrQueue.findMatch(blk_addr, is_secure);
+
+    //found the missing blk from someone else
+    //hence need to bypass
+    if (blk_addr || mshr){
+       pkt->isBypass = true;
+       pkt->req->isBypass = true;
+    }
 
     // Update the latency cost of the snoop so that the crossbar can
     // account for it. Do not overwrite what other neighbouring caches

@@ -789,6 +789,7 @@ class Packet : public Printable
            _qosValue(0), headerDelay(0), snoopDelay(0),
            payloadDelay(0), senderState(NULL)
     {
+        isBypass = false;
         load_seqNum = 0;
         if (req->hasPaddr()) {
             addr = req->getPaddr();
@@ -812,6 +813,7 @@ class Packet : public Printable
            _qosValue(0), headerDelay(0),
            snoopDelay(0), payloadDelay(0), senderState(NULL)
     {
+        isBypass = false;
         load_seqNum = 0;
         if (req->hasPaddr()) {
             addr = req->getPaddr() & ~(_blkSize - 1);
@@ -840,6 +842,7 @@ class Packet : public Printable
            payloadDelay(pkt->payloadDelay),
            senderState(pkt->senderState)
     {
+        isBypass = false;
         load_seqNum = 0;
         if (!clear_flags)
             flags.set(pkt->flags & COPY_FLAGS);
