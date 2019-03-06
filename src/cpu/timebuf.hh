@@ -248,4 +248,3 @@ class TimeBuffer
 };
 
 #endif // __BASE_TIMEBUF_HH__
-

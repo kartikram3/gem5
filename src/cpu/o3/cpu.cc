@@ -114,6 +114,11 @@ template <class Impl>
 bool
 FullO3CPU<Impl>::DcachePort::recvTimingResp(PacketPtr pkt)
 {
+    //receive the timing response
+    //however, slow it down if required
+    cpu->packets.push_back({pkt});
+    return true;  //just return saying done
+
     return lsq->recvTimingResp(pkt);
 }
 
@@ -615,7 +620,27 @@ FullO3CPU<Impl>::tick()
     if (!FullSystem)
         updateThreadPriority();
 
+    //before draining, receive the relevant data packets
+    //this helps us retrieve the correct solution
+    receiveDataPkt();
+
     tryDrain();
+}
+
+//receive the data pkt related to the cache lines
+template <class Impl>
+void
+FullO3CPU<Impl>::receiveDataPkt(){
+   //receive the data pkt
+   //use a priority queue instead of
+   //a list ... this helps re-time
+   //packets that got there early
+   if (packets.size() > 0)
+   {
+      PacketInfo pi = *(packets.begin());
+      packets.pop_front();
+      dcachePort.receiveDataPkt(pi.pkt);
+   }
 }
 
 template <class Impl>
