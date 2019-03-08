@@ -161,6 +161,7 @@ enumeration(RubyRequestType, desc="...", default="RubyRequestType_NULL") {
   ATOMIC_RETURN,     desc="Atomic Load/Store, return data";
   ATOMIC_NO_RETURN,  desc="Atomic Load/Store, do not return data";
   IFETCH,            desc="Instruction fetch";
+  Squash,            desc="Squashes from the data cache";
   IO,                desc="I/O";
   REPLACEMENT,       desc="Replacement";
   Load_Linked,       desc="";

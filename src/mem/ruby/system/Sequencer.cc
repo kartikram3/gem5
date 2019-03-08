@@ -605,7 +605,9 @@ Sequencer::makeRequest(PacketPtr pkt)
             }
         } else if (pkt->isFlush()) {
           primary_type = secondary_type = RubyRequestType_FLUSH;
-        } else {
+        } else if (pkt->isSquash()){
+          primary_type = secondary_type = RubyRequestType_Squash;
+        }
             panic("Unsupported ruby packet type\n");
         }
     }
