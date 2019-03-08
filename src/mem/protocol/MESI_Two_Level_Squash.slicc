@@ -1,0 +1,7 @@
+protocol "MESI_Two_Level_Squash";
+include "RubySlicc_interfaces.slicc";
+include "MESI_Two_Level_Squash-msg.sm";
+include "MESI_Two_Level_Squash-L1cache.sm";
+include "MESI_Two_Level_Squash-L2cache.sm";
+include "MESI_Two_Level_Squash-dir.sm";
+include "MESI_Two_Level_Squash-dma.sm";
