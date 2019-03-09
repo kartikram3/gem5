@@ -1,0 +1,18 @@
+//Access the L1 cache
+isTagPresent
+cacheAvail
+cacheProbe
+setMRU
+deallocate
+allocate
+demand_misses
+demand_hits
+
+//Access the L2 cache
+cacheAvail
+cacheProbe
+setMRU
+allocate
+deallocate
+demand_misses
+demand_hits

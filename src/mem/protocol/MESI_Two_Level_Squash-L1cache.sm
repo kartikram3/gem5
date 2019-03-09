@@ -266,7 +266,7 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
       return Event:Ifetch;
     } else if ((type == RubyRequestType:ST) || (type == RubyRequestType:ATOMIC)) {
       return Event:Store;
-    } else if (type == RubyRequestType::SQUASH) {
+    } else if (type == RubyRequestType:SQUASH) {
       return Event:Squash;
     }else {
       error("Invalid RubyRequestType");

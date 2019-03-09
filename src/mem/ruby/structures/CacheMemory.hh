@@ -50,11 +50,20 @@
 class CacheMemory : public SimObject
 {
   public:
+    typedef struct BufferInfo {
+      Addr addr;
+      uint64_t order;
+    } BufferInfo;
+
+  public:
     typedef RubyCacheParams Params;
     CacheMemory(const Params *p);
     ~CacheMemory();
 
     void init();
+
+    //buffer that holds information
+    std::vector<AbstractCacheEntry *> miss_buffer;
 
     // Public Methods
     // perform a cache access and see if we hit or not.  Return true on a hit.

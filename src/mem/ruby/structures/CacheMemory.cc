@@ -217,6 +217,15 @@ CacheMemory::isTagPresent(Addr address) const
     int64_t cacheSet = addressToCacheSet(address);
     int loc = findTagInSet(cacheSet, address);
 
+    //Also look in the buffer to check if the cache line
+    //was in there by mistake
+    for (auto it = miss_buffer.begin(); it != miss_buffer.end(); it++){
+       //we search the buffer also
+       if ((*it).addr == address ) {
+          loc = 1;
+       }
+    }
+
     if (loc == -1) {
         // We didn't find the tag
         DPRINTF(RubyCache, "No tag match for address: %#x\n", address);
@@ -294,6 +303,8 @@ CacheMemory::allocate(Addr address, AbstractCacheEntry *entry, bool touch)
 void
 CacheMemory::deallocate(Addr address)
 {
+    //modify this so that the cache also checks
+    //the extra buffer
     assert(address == makeLineAddress(address));
     assert(isTagPresent(address));
     DPRINTF(RubyCache, "address: %#x\n", address);

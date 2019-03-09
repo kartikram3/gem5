@@ -258,6 +258,7 @@ class Packet : public Printable
   public:
     typedef uint32_t FlagsType;
     typedef ::Flags<FlagsType> Flags;
+    bool squash;
 
   private:
 
@@ -554,6 +555,8 @@ class Packet : public Printable
     bool isPrint() const             { return cmd.isPrint(); }
     bool isFlush() const             { return cmd.isFlush(); }
 
+    bool isSquash() const            { return squash;};
+
     bool isWholeLineWrite(unsigned blk_size)
     {
         return (cmd == MemCmd::WriteReq || cmd == MemCmd::WriteLineReq) &&
@@ -781,6 +784,7 @@ class Packet : public Printable
            _qosValue(0), headerDelay(0), snoopDelay(0),
            payloadDelay(0), senderState(NULL)
     {
+        squash=false;
         if (req->hasPaddr()) {
             addr = req->getPaddr();
             flags.set(VALID_ADDR);
@@ -803,6 +807,7 @@ class Packet : public Printable
            _qosValue(0), headerDelay(0),
            snoopDelay(0), payloadDelay(0), senderState(NULL)
     {
+        squash=false;
         if (req->hasPaddr()) {
             addr = req->getPaddr() & ~(_blkSize - 1);
             flags.set(VALID_ADDR);
@@ -830,6 +835,7 @@ class Packet : public Printable
            payloadDelay(pkt->payloadDelay),
            senderState(pkt->senderState)
     {
+        squash=false;
         if (!clear_flags)
             flags.set(pkt->flags & COPY_FLAGS);
 
