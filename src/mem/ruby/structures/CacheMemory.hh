@@ -64,6 +64,8 @@ class CacheMemory : public SimObject
 
     //buffer that holds information
     std::vector<AbstractCacheEntry *> miss_buffer;
+    int repl_id;
+    int buf_size;
 
     // Public Methods
     // perform a cache access and see if we hit or not.  Return true on a hit.
