@@ -78,6 +78,8 @@ CacheMemory::CacheMemory(const Params *p)
     for (int i=0; i<buf_size; i++){
       miss_buffer.push_back(NULL);
     }
+
+    buffer_full=false;
 }
 
 void
@@ -230,7 +232,20 @@ CacheMemory::testCacheAccess(Addr address, RubyRequestType type,
     return false;
 }
 
-// tests to see if an address is present in the cache
+//update the buffer stats if the recent hit was
+//to the cache line
+void
+CacheMemory::updateBufStats(Addr address){
+   for (int i=0; i<buf_size; i++){
+     if (miss_buffer[i]){
+        if (miss_buffer[i]->m_Address == address){
+           m_miss_buf_hits++;
+        }
+     }
+   }
+}
+
+//tests to see if an address is present in the cache
 bool
 CacheMemory::isTagPresent(Addr address) const
 {
@@ -251,6 +266,22 @@ CacheMemory::isTagPresent(Addr address) const
     DPRINTF(RubyCache, "address: %#x found\n", address);
     return true;
 }
+
+//check that there aren't any duplicates
+//in the cache ...
+void
+CacheMemory::checkDuplicates(){
+   //check that there aren't any duplicates
+   for (int i=0; i<buf_size; i++){
+     for (int j=i+1; j<buf_size; j++){
+         if ((miss_buffer[i] != NULL) &&
+             (miss_buffer[j] != NULL)){
+             assert(miss_buffer[i]!=miss_buffer[j]);
+         }
+     }
+   }
+}
+
 
 // Returns true if there is:
 //   a) a tag match on this address or there is
@@ -281,7 +312,7 @@ CacheMemory::cacheAvail(Addr address)
         AbstractCacheEntry* entry = miss_buffer[i];
         if (entry != NULL) {
             if (entry->m_Address == address) {
-                // Already in the cache or we found an empty entry
+                //Already in the cache or we found an empty entry
                 return true;
             }
         } else {
@@ -291,7 +322,12 @@ CacheMemory::cacheAvail(Addr address)
     }
 
     //if buffer room available, shift it there (based on the repl policy)
+    //this happens only in the start ... should not happen later on
     Addr mov_addr = m_cache[cacheSet][0]->m_Address;
+    if (buffer_full){
+       assert(!nullAvailable);
+    }
+
     if (nullAvailable){
        miss_buffer[nullIdx] = m_cache[cacheSet][0];
        assert(m_cache[cacheSet][0]->m_Permission !=
@@ -300,8 +336,14 @@ CacheMemory::cacheAvail(Addr address)
        assert(m_tag_index.find(mov_addr) != m_tag_index.end());
        m_tag_index.erase(m_tag_index.find(mov_addr));
        fprintf(stderr, "Erased addr is %lx \n", mov_addr);
+       checkDuplicates();
        return true;
+    } else {
+       buffer_full = true;
     }
+
+    //if the buffer is full, we are done
+
 
     return false;
 }
@@ -437,17 +479,18 @@ CacheMemory::cacheProbe(Addr address)
     }
 
     //however, also put the victim_addr into the swap list
-    swap_list.push_back
-        ({set_addr,buf_addr,
-        entry, cacheSet, way, repl_id});
-
-    for (auto it = swap_list.begin(); it != swap_list.end(); it++){
-      if ((*it).set_addr == )
+    if (swap_list.size() == 0){
+      swap_list.push_back
+          ({set_addr,buf_addr,
+          entry, cacheSet, way, repl_id});
+      //update repl_id
+      repl_id++;
+      repl_id = repl_id & (buf_size - 1);
+    }else{
+      assert(swap_list.size() == 1);
+      Addr a = (*(swap_list.begin())).set_addr;
+      assert(a==set_addr);
     }
-
-    //update repl_id
-    repl_id++;
-    repl_id = repl_id & (buf_size - 1);
 
     //the buf addr is kicked out, not the set addr
     return buf_addr;
@@ -466,7 +509,10 @@ CacheMemory::lookup(Addr address)
     int64_t cacheSet = addressToCacheSet(address);
     int loc = findTagInSet(cacheSet, address);
     if (loc == -1) return NULL;
-    if (loc >= 100) return miss_buffer[loc-100];
+    if (loc >= 100) {
+      assert(miss_buffer[loc-100]);
+      return miss_buffer[loc-100];
+    }
     return m_cache[cacheSet][loc];
 }
 
@@ -478,7 +524,10 @@ CacheMemory::lookup(Addr address) const
     int64_t cacheSet = addressToCacheSet(address);
     int loc = findTagInSet(cacheSet, address);
     if (loc == -1) return NULL;
-    if (loc >= 100) return miss_buffer[loc-100];
+    if (loc >= 100) {
+      assert(miss_buffer[loc-100]);
+      return miss_buffer[loc-100];
+    }
     return m_cache[cacheSet][loc];
 }
 
@@ -509,7 +558,11 @@ CacheMemory::setMRU(const AbstractCacheEntry *e)
     //check whether it is in the buffer, if so then
     for (int i = 0; i < buf_size ; i++){
        if (miss_buffer[i]){
-         if (miss_buffer[i] == e) return; //no touch
+         if (miss_buffer[i] == e){
+            assert(m_tag_index.find(e->m_Address) ==
+                   m_tag_index.end());
+           return;
+         }//no touch
        }
     }
     m_replacementPolicy_ptr->touch(cacheSet, loc, curTick());
@@ -536,6 +589,7 @@ CacheMemory::setMRU(Addr address, int occupancy)
 int
 CacheMemory::getReplacementWeight(int64_t set, int64_t loc)
 {
+    panic("We should not use getReplacementWeight\n");
     assert(set < m_cache_num_sets);
     assert(loc < m_cache_assoc);
     int ret = 0;
@@ -550,6 +604,7 @@ CacheMemory::getReplacementWeight(int64_t set, int64_t loc)
 void
 CacheMemory::recordCacheContents(int cntrl, CacheRecorder* tr) const
 {
+    panic("We should not use recordCacheContents\n");
     uint64_t warmedUpBlocks = 0;
     uint64_t totalBlocks M5_VAR_USED = (uint64_t)m_cache_num_sets *
                                        (uint64_t)m_cache_assoc;
@@ -618,10 +673,12 @@ CacheMemory::setLocked(Addr address, int context)
     int64_t cacheSet = addressToCacheSet(address);
     int loc = findTagInSet(cacheSet, address);
     assert(loc != -1);
-    if (loc < 100)
+    if (loc < 100){
       m_cache[cacheSet][loc]->setLocked(context);
-    else
+    }else{
+      assert(miss_buffer[loc-100]);
       miss_buffer[loc-100]->setLocked(context);
+    }
 }
 
 void
@@ -633,10 +690,12 @@ CacheMemory::clearLocked(Addr address)
     int64_t cacheSet = addressToCacheSet(address);
     int loc = findTagInSet(cacheSet, address);
     assert(loc != -1);
-    if (loc < 100)
+    if (loc < 100){
        m_cache[cacheSet][loc]->clearLocked();
-    else
+    }else{
+      assert(miss_buffer[loc-100]);
       miss_buffer[loc-100]->clearLocked();
+    }
 }
 
 bool
@@ -649,16 +708,23 @@ CacheMemory::isLocked(Addr address, int context)
     assert(loc != -1);
     DPRINTF(RubyCache, "Testing Lock for addr: %#llx cur %d con %d\n",
             address, m_cache[cacheSet][loc]->m_locked, context);
-    if (loc < 100)
+    if (loc < 100){
       return m_cache[cacheSet][loc]->isLocked(context);
-    else
+    }else{
+      assert(miss_buffer[loc-100]);
       return miss_buffer[loc-100]->isLocked(context);
+    }
 }
 
 void
 CacheMemory::regStats()
 {
     SimObject::regStats();
+
+    m_miss_buf_hits
+        .name(name() + ".miss_buf_hits")
+        .desc("Number of miss buffer hits")
+        ;
 
     m_demand_hits
         .name(name() + ".demand_hits")
@@ -783,6 +849,7 @@ CacheMemory::recordRequestType(CacheRequestType requestType, Addr addr)
 bool
 CacheMemory::checkResourceAvailable(CacheResourceType res, Addr addr)
 {
+    panic("Should not use checkResourceAvailable\n");
     if (!m_resource_stalls) {
         return true;
     }
@@ -813,11 +880,13 @@ CacheMemory::checkResourceAvailable(CacheResourceType res, Addr addr)
 bool
 CacheMemory::isBlockInvalid(int64_t cache_set, int64_t loc)
 {
+  panic("Should not use isBlockInvalid\n");
   return (m_cache[cache_set][loc]->m_Permission == AccessPermission_Invalid);
 }
 
 bool
 CacheMemory::isBlockNotBusy(int64_t cache_set, int64_t loc)
 {
+  panic("Should not use isBlockNotBusy\n");
   return (m_cache[cache_set][loc]->m_Permission != AccessPermission_Busy);
 }

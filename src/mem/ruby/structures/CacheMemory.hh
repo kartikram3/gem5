@@ -67,14 +67,18 @@ class CacheMemory : public SimObject
 
     void init();
 
+
     //buffer that holds information
     std::vector<AbstractCacheEntry *> miss_buffer;
     std::vector<SwapInfo> swap_list;
     int repl_id;
     int buf_size;
     uint64_t order;
+    bool buffer_full;
 
     // Public Methods
+    void checkDuplicates();
+
     // perform a cache access and see if we hit or not.  Return true on a hit.
     bool tryCacheAccess(Addr address, RubyRequestType type,
                         DataBlock*& data_ptr);
@@ -90,6 +94,10 @@ class CacheMemory : public SimObject
     //   a) a tag match on this address or there is
     //   b) an unused line in the same cache "way"
     bool cacheAvail(Addr address) ;
+
+    //update the buffer stats
+    void updateBufStats(Addr address) ;
+
 
     // find an unused entry and sets the tag appropriate for the address
     AbstractCacheEntry* allocate(Addr address,
@@ -146,6 +154,8 @@ class CacheMemory : public SimObject
     void recordRequestType(CacheRequestType requestType, Addr addr);
 
   public:
+    Stats::Scalar m_miss_buf_hits;
+
     Stats::Scalar m_demand_hits;
     Stats::Scalar m_demand_misses;
     Stats::Formula m_demand_accesses;
@@ -178,6 +188,7 @@ class CacheMemory : public SimObject
     int findTagInSet(int64_t line, Addr tag) const;
     int findTagInSetIgnorePermissions(int64_t cacheSet, Addr tag) const;
 
+
     // Private copy constructor and assignment operator
     CacheMemory(const CacheMemory& obj);
     CacheMemory& operator=(const CacheMemory& obj);
@@ -204,6 +215,8 @@ class CacheMemory : public SimObject
     bool m_resource_stalls;
     int m_block_size;
 };
+
+
 
 std::ostream& operator<<(std::ostream& out, const CacheMemory& obj);
 

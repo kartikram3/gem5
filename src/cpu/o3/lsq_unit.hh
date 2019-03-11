@@ -486,6 +486,8 @@ class LSQUnit {
     /** Total number of loads forwaded from LSQ stores. */
     Stats::Scalar lsqForwLoads;
 
+    Stats::Scalar squash;
+
     /** Total number of loads ignored due to invalid addresses. */
     Stats::Scalar invAddrLoads;
 

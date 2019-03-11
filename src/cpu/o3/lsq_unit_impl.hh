@@ -135,6 +135,10 @@ LSQUnit<Impl>::completeDataAccess(PacketPtr pkt)
         delete state->mainPkt;
     }
 
+    uint64_t latency = inst->issueTime - inst->squashTime ;
+    //update the level
+    inst->cache_depth =
+
     pkt->req->setAccessLatency();
     cpu->ppDataAccessComplete->notify(std::make_pair(inst, pkt));
 
@@ -1004,6 +1008,8 @@ LSQUnit<Impl>::squash(const InstSeqNum &squashed_num)
 
         // Inefficient!
         loadTail = load_idx;
+
+        //send a squash message if required (wrong path and cache miss)
 
         decrLdIdx(load_idx);
         ++lsqSquashedLoads;

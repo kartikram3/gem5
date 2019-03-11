@@ -948,6 +948,7 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
   }
 
   action(uu_profileInstHit, "\uih", desc="Profile the demand hit") {
+      L1Icache.updateBufStats(address);
       ++L1Icache.demand_hits;
   }
 
@@ -956,6 +957,7 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
   }
 
   action(uu_profileDataHit, "\udh", desc="Profile the demand hit") {
+      L1Dcache.updateBufStats(address);
       ++L1Dcache.demand_hits;
   }
 

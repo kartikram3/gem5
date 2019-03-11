@@ -192,6 +192,7 @@ structure(AbstractCacheEntry, primitive="yes", external = "yes") {
 
 structure (CacheMemory, external = "yes") {
   bool cacheAvail(Addr);
+  void updateBufStats(Addr);
   Addr cacheProbe(Addr);
   AbstractCacheEntry allocate(Addr, AbstractCacheEntry);
   AbstractCacheEntry allocate(Addr, AbstractCacheEntry, bool);

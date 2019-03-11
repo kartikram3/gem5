@@ -56,6 +56,9 @@ class PseudoLRUPolicy : public AbstractReplacementPolicy
     void touch(int64_t set, int64_t way, Tick time);
     int64_t getVictim(int64_t set) const;
 
+    //remove from repl policy because in buffer
+    void remove(int64_t set, int64_t way);
+
   private:
     unsigned int m_effective_assoc;    /** nearest (to ceiling) power of 2 */
     unsigned int m_num_levels;         /** number of levels in the tree */
