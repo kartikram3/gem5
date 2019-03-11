@@ -50,10 +50,15 @@
 class CacheMemory : public SimObject
 {
   public:
-    typedef struct BufferInfo {
-      Addr addr;
-      uint64_t order;
-    } BufferInfo;
+
+    typedef struct SwapInfo {
+      Addr set_addr; //the address that we swap
+      Addr buf_addr; //the victim evicted
+      AbstractCacheEntry* set_entry;
+      int64_t set;
+      int way;
+      int repl_id;
+    } SwapInfo;
 
   public:
     typedef RubyCacheParams Params;
@@ -64,8 +69,10 @@ class CacheMemory : public SimObject
 
     //buffer that holds information
     std::vector<AbstractCacheEntry *> miss_buffer;
+    std::vector<SwapInfo> swap_list;
     int repl_id;
     int buf_size;
+    uint64_t order;
 
     // Public Methods
     // perform a cache access and see if we hit or not.  Return true on a hit.
@@ -82,7 +89,7 @@ class CacheMemory : public SimObject
     // Returns true if there is:
     //   a) a tag match on this address or there is
     //   b) an unused line in the same cache "way"
-    bool cacheAvail(Addr address) const;
+    bool cacheAvail(Addr address) ;
 
     // find an unused entry and sets the tag appropriate for the address
     AbstractCacheEntry* allocate(Addr address,
@@ -100,7 +107,7 @@ class CacheMemory : public SimObject
     void deallocate(Addr address);
 
     // Returns with the physical address of the conflicting cache line
-    Addr cacheProbe(Addr address) const;
+    Addr cacheProbe(Addr address) ;
 
     // looks an address up in the cache
     AbstractCacheEntry* lookup(Addr address);
