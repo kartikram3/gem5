@@ -94,6 +94,8 @@ class LSQUnit {
      */
     LSQUnit(const LSQUnit &l) { panic("LSQUnit is not copy-able"); }
 
+    void executeLoadSquash();
+
     /** Initializes the LSQ unit with the specified number of entries. */
     void init(O3CPU *cpu_ptr, IEW *iew_ptr, DerivO3CPUParams *params,
             LSQ *lsq_ptr, unsigned id);
@@ -486,7 +488,7 @@ class LSQUnit {
     /** Total number of loads forwaded from LSQ stores. */
     Stats::Scalar lsqForwLoads;
 
-    Stats::Scalar squash;
+    Stats::Scalar squashLoads;
 
     /** Total number of loads ignored due to invalid addresses. */
     Stats::Scalar invAddrLoads;
@@ -776,6 +778,9 @@ LSQUnit<Impl>::read(const RequestPtr &req,
     state->idx = load_idx;
     state->inst = load_inst;
     data_pkt->senderState = state;
+
+    load_inst->issueTime = curTick();
+    load_inst->side_effect = false;
 
     if (!TheISA::HasUnalignedMemAcc || !sreqLow) {
         // Point the first packet at the main data packet.

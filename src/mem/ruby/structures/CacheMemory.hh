@@ -58,6 +58,7 @@ class CacheMemory : public SimObject
       int64_t set;
       int way;
       int repl_id;
+      Addr incoming_addr;
     } SwapInfo;
 
   public:

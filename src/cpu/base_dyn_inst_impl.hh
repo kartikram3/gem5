@@ -73,6 +73,11 @@ BaseDynInst<Impl>::BaseDynInst(const StaticInstPtr &_staticInst,
     savedSreqHigh(nullptr),
     reqToVerify(nullptr)
 {
+
+    issueTime = -1;
+    sideEffect = false;
+    receivedResp = false;
+    latency = -1;
     seqNum = seq_num;
 
     pc = _pc;
@@ -86,6 +91,11 @@ BaseDynInst<Impl>::BaseDynInst(const StaticInstPtr &_staticInst,
                                const StaticInstPtr &_macroop)
     : staticInst(_staticInst), traceData(NULL), macroop(_macroop)
 {
+
+    issueTime = -1;
+    sideEffect = false;
+    receivedResp = false;
+    latency = -1;
     seqNum = 0;
     initVars();
 }

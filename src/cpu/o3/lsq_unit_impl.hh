@@ -135,9 +135,21 @@ LSQUnit<Impl>::completeDataAccess(PacketPtr pkt)
         delete state->mainPkt;
     }
 
-    uint64_t latency = inst->issueTime - inst->squashTime ;
-    //update the level
-    inst->cache_depth =
+    //this records the latency of the cache access
+    uint64_t latency = 0;
+    //fprintf(stderr, "The issue time of completed load is %lx\n",
+     //        inst->issueTime);
+    if (inst->issueTime != -1){
+      latency = curTick() - inst->issueTime;
+      //we use the latency measurements
+      //to our advantage
+      inst->receivedResp = true;
+      inst->latency = latency;
+      if (latency > 4000)
+        inst->sideEffect = true;
+      else
+        inst->sideEffect = false;
+    }
 
     pkt->req->setAccessLatency();
     cpu->ppDataAccessComplete->notify(std::make_pair(inst, pkt));
@@ -216,6 +228,12 @@ LSQUnit<Impl>::regStats()
     lsqForwLoads
         .name(name() + ".forwLoads")
         .desc("Number of loads that had data forwarded from stores");
+
+
+    squashLoads
+        .name(name() + ".squashLoads")
+        .desc("Squashing Loads that created side effects");
+
 
     invAddrLoads
         .name(name() + ".invAddrLoads")
@@ -1003,6 +1021,27 @@ LSQUnit<Impl>::squash(const InstSeqNum &squashed_num)
 
         // Clear the smart pointer to make sure it is decremented.
         loadQueue[load_idx]->setSquashed();
+
+        // fprintf(stderr, "The squash issue time is %lx\n",
+        //       loadQueue[load_idx]->issueTime);
+        // increment the potential squashed loads
+        //if (loadQueue[load_idx]->issueTime != -1){
+        //  fprintf(stderr,"The squash latency is %lx\n",
+        //         loadQueue[load_idx]->latency);
+        //}
+
+        if (loadQueue[load_idx]->receivedResp){
+          if (loadQueue[load_idx]->sideEffect){
+            squashLoads++;
+          };
+        } else{if (loadQueue[load_idx]->issueTime != -1)
+                 if ( (curTick() - loadQueue[load_idx]->issueTime)
+                       > 2000)
+                 squashLoads++;
+        } //pessimistic assumption ... we should send a single squash
+          //request ... because we don't need to squash much most of
+          //the time
+
         loadQueue[load_idx] = NULL;
         --loads;
 
@@ -1010,6 +1049,7 @@ LSQUnit<Impl>::squash(const InstSeqNum &squashed_num)
         loadTail = load_idx;
 
         //send a squash message if required (wrong path and cache miss)
+        executeLoadSquash();
 
         decrLdIdx(load_idx);
         ++lsqSquashedLoads;
@@ -1065,6 +1105,12 @@ LSQUnit<Impl>::squash(const InstSeqNum &squashed_num)
         decrStIdx(store_idx);
         ++lsqSquashedStores;
     }
+}
+
+template <class Impl>
+void
+LSQUnit<Impl>::executeLoadSquash(){
+   //create a squash packet ...
 }
 
 template <class Impl>

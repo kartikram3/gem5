@@ -123,6 +123,20 @@ int
 CacheMemory::findTagInSet(int64_t cacheSet, Addr tag) const
 {
     assert(tag == makeLineAddress(tag));
+
+    //search the buffer for the cache lines
+    //this can be helpful to find the correct
+    //solution
+    for (int i=0; i<buf_size; i++){
+        if (miss_buffer[i])
+          if (miss_buffer[i]->m_Address == tag ){
+            assert(m_tag_index.find(tag) == m_tag_index.end());
+            assert(miss_buffer[i]->m_Permission !=
+                AccessPermission_NotPresent);
+            return (100+i);
+          }
+    }
+
     // search the set for the tags
     auto it = m_tag_index.find(tag);
     if (it != m_tag_index.end())
@@ -130,13 +144,6 @@ CacheMemory::findTagInSet(int64_t cacheSet, Addr tag) const
             AccessPermission_NotPresent)
             return it->second;
 
-    int idx=0;
-    for (int i=0; i<buf_size; i++){
-        if (miss_buffer[i])
-          if (miss_buffer[i]->m_Address == tag )
-            return (100+idx);
-        idx++;
-    }
 
     return -1; // Not found
 }
@@ -162,6 +169,7 @@ CacheMemory::findTagInSetIgnorePermissions(int64_t cacheSet,
 Addr
 CacheMemory::getAddressAtIdx(int idx) const
 {
+    panic("We should not use the function getAddressAtIdx\n");
     Addr tmp(0);
 
     int set = idx / m_cache_assoc;
@@ -183,7 +191,6 @@ bool
 CacheMemory::tryCacheAccess(Addr address, RubyRequestType type,
                             DataBlock*& data_ptr)
 {
-
     panic("We should not used function tryCacheAccess\n");
     assert(address == makeLineAddress(address));
     DPRINTF(RubyCache, "address: %#x\n", address);
@@ -235,7 +242,9 @@ CacheMemory::testCacheAccess(Addr address, RubyRequestType type,
 //update the buffer stats if the recent hit was
 //to the cache line
 void
-CacheMemory::updateBufStats(Addr address){
+CacheMemory::updateBufStats(Addr address)
+{
+   //this is used to update the buf stats
    for (int i=0; i<buf_size; i++){
      if (miss_buffer[i]){
         if (miss_buffer[i]->m_Address == address){
@@ -270,7 +279,8 @@ CacheMemory::isTagPresent(Addr address) const
 //check that there aren't any duplicates
 //in the cache ...
 void
-CacheMemory::checkDuplicates(){
+CacheMemory::checkDuplicates()
+{
    //check that there aren't any duplicates
    for (int i=0; i<buf_size; i++){
      for (int j=i+1; j<buf_size; j++){
@@ -281,7 +291,6 @@ CacheMemory::checkDuplicates(){
      }
    }
 }
-
 
 // Returns true if there is:
 //   a) a tag match on this address or there is
@@ -335,7 +344,7 @@ CacheMemory::cacheAvail(Addr address)
        m_cache[cacheSet][0] = NULL;
        assert(m_tag_index.find(mov_addr) != m_tag_index.end());
        m_tag_index.erase(m_tag_index.find(mov_addr));
-       fprintf(stderr, "Erased addr is %lx \n", mov_addr);
+       //fprintf(stderr, "Erased addr is %lx \n", mov_addr);
        checkDuplicates();
        return true;
     } else {
@@ -377,9 +386,6 @@ CacheMemory::allocate(Addr address, AbstractCacheEntry *entry, bool touch)
                     address);
             set[i]->m_locked = -1;
             m_tag_index[address] = i;
-            if (address == 0x11d40){
-              fprintf(stderr, "Accessing addr 0x11d40\n");
-            }
             entry->setSetIndex(cacheSet);
             entry->setWayIndex(i);
 
@@ -406,28 +412,38 @@ CacheMemory::deallocate(Addr address)
     int loc = findTagInSet(cacheSet, address);
     if (loc != -1) {
         if (loc < 100) {
+
           //check that it is not in the swap list
+          //or the miss buffer
           for (int i=0; i<buf_size; i++){
             if (miss_buffer[i])
               if (miss_buffer[i]->m_Address == address )
                  panic("Line found in miss buf and set\n");
           }
 
-          fprintf(stderr, "Deallocated set addr %lx\n",
-                  address);
+          if (swap_list.size() != 0){
+            auto it = swap_list.begin();
+            Addr swap_addr= ((*it).set_addr);
+            assert(swap_addr != address);
+          }
+
+          //fprintf(stderr, "Deallocated set addr %lx\n",
+          //        address);
 
           delete m_cache[cacheSet][loc];
           m_cache[cacheSet][loc] = NULL;
           m_tag_index.erase(address);
         } else {
           assert(miss_buffer[loc-100]);
-          fprintf(stderr, "Deallocated buf addr %lx\n",
-                  address);
-
+          assert(miss_buffer[loc-100]->m_Address == address);
+          //fprintf(stderr, "Deallocated buf addr %lx\n",
+          //        address);
+          assert(swap_list.size() != 0);
           delete miss_buffer[loc-100];
           for (auto it = swap_list.begin();
                     it != swap_list.end();
                     it++){
+             assert((*it).buf_addr == address);
              if ((*it).buf_addr == address) {
                  miss_buffer[loc-100] =
                    (*it).set_entry;
@@ -482,10 +498,11 @@ CacheMemory::cacheProbe(Addr address)
     if (swap_list.size() == 0){
       swap_list.push_back
           ({set_addr,buf_addr,
-          entry, cacheSet, way, repl_id});
+          entry, cacheSet, way, repl_id, address});
       //update repl_id
       repl_id++;
       repl_id = repl_id & (buf_size - 1);
+      fprintf(stderr,"Repl id is %d \n", repl_id);
     }else{
       assert(swap_list.size() == 1);
       Addr a = (*(swap_list.begin())).set_addr;
@@ -501,9 +518,9 @@ AbstractCacheEntry*
 CacheMemory::lookup(Addr address)
 {
     if (address != makeLineAddress(address)){
-       fprintf(stderr, "The address is %lx,"
-                       "The line address is %lx",
-                       address, makeLineAddress(address));
+       //fprintf(stderr, "The address is %lx,"
+       //                "The line address is %lx",
+       //                address, makeLineAddress(address));
     }
     assert(address == makeLineAddress(address));
     int64_t cacheSet = addressToCacheSet(address);
@@ -513,6 +530,7 @@ CacheMemory::lookup(Addr address)
       assert(miss_buffer[loc-100]);
       return miss_buffer[loc-100];
     }
+    assert(m_cache[cacheSet][loc]);
     return m_cache[cacheSet][loc];
 }
 
@@ -528,6 +546,7 @@ CacheMemory::lookup(Addr address) const
       assert(miss_buffer[loc-100]);
       return miss_buffer[loc-100];
     }
+    assert(m_cache[cacheSet][loc]);
     return m_cache[cacheSet][loc];
 }
 
@@ -684,7 +703,7 @@ CacheMemory::setLocked(Addr address, int context)
 void
 CacheMemory::clearLocked(Addr address)
 {
-    fprintf(stderr, "Doing clearLocked function\n");
+    //fprintf(stderr, "Doing clearLocked function\n");
     DPRINTF(RubyCache, "Clear Lock for addr: %#x\n", address);
     assert(address == makeLineAddress(address));
     int64_t cacheSet = addressToCacheSet(address);
@@ -701,7 +720,7 @@ CacheMemory::clearLocked(Addr address)
 bool
 CacheMemory::isLocked(Addr address, int context)
 {
-    fprintf(stderr, "Doing isLocked function\n");
+    //fprintf(stderr, "Doing isLocked function\n");
     assert(address == makeLineAddress(address));
     int64_t cacheSet = addressToCacheSet(address);
     int loc = findTagInSet(cacheSet, address);

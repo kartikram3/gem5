@@ -79,6 +79,11 @@ template <class Impl>
 class BaseDynInst : public ExecContext, public RefCounted
 {
   public:
+    uint64_t issueTime;
+    bool sideEffect;
+    bool receivedResp;
+    uint64_t latency;
+
     // Typedef for the CPU.
     typedef typename Impl::CPUType ImplCPU;
     typedef typename ImplCPU::ImplState ImplState;
@@ -140,6 +145,10 @@ class BaseDynInst : public ExecContext, public RefCounted
     };
 
   public:
+
+    uint64_t issue_time;
+    bool side_effect;
+
     /** The sequence number of the instruction. */
     InstSeqNum seqNum;
 
