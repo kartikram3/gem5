@@ -61,6 +61,13 @@ class CacheMemory : public SimObject
       Addr incoming_addr;
     } SwapInfo;
 
+    typedef struct MissBufferEntry {
+      AbstractCacheEntry *e;
+      //Entry that replaced it ... restore if there
+      //is a cache squash
+      uint64_t age;
+    } MissBufferEntry;
+
   public:
     typedef RubyCacheParams Params;
     CacheMemory(const Params *p);
@@ -70,7 +77,7 @@ class CacheMemory : public SimObject
 
 
     //buffer that holds information
-    std::vector<AbstractCacheEntry *> miss_buffer;
+    std::vector<MissBufferEntry> miss_buffer;
     std::vector<SwapInfo> swap_list;
     int repl_id;
     int buf_size;
@@ -95,6 +102,7 @@ class CacheMemory : public SimObject
     //   a) a tag match on this address or there is
     //   b) an unused line in the same cache "way"
     bool cacheAvail(Addr address) ;
+    bool cacheAvailIcache(Addr address) ;
 
     //update the buffer stats
     void updateBufStats(Addr address) ;
@@ -103,20 +111,32 @@ class CacheMemory : public SimObject
     // find an unused entry and sets the tag appropriate for the address
     AbstractCacheEntry* allocate(Addr address,
                                  AbstractCacheEntry* new_entry, bool touch);
+
+    AbstractCacheEntry* allocateIcache(Addr address,
+                                 AbstractCacheEntry* new_entry, bool touch);
     AbstractCacheEntry* allocate(Addr address, AbstractCacheEntry* new_entry)
     {
         return allocate(address, new_entry, true);
     }
+
+    AbstractCacheEntry* allocateIcache(Addr address,
+        AbstractCacheEntry* new_entry)
+    {
+        return allocateIcache(address, new_entry, true);
+    }
+
     void allocateVoid(Addr address, AbstractCacheEntry* new_entry)
     {
         allocate(address, new_entry, true);
     }
 
     // Explicitly free up this address
+    void deallocateIcache(Addr address);
     void deallocate(Addr address);
 
     // Returns with the physical address of the conflicting cache line
     Addr cacheProbe(Addr address) ;
+    Addr cacheProbeIcache(Addr address) ;
 
     // looks an address up in the cache
     AbstractCacheEntry* lookup(Addr address);
@@ -156,6 +176,7 @@ class CacheMemory : public SimObject
 
   public:
     Stats::Scalar m_miss_buf_hits;
+    Stats::Scalar m_side_effect_lost;
 
     Stats::Scalar m_demand_hits;
     Stats::Scalar m_demand_misses;
@@ -179,6 +200,8 @@ class CacheMemory : public SimObject
     int getCacheAssoc() const { return m_cache_assoc; }
     int getNumBlocks() const { return m_cache_num_sets * m_cache_assoc; }
     Addr getAddressAtIdx(int idx) const;
+    void checkAge(uint64_t age);
+    void squashSideEffect();
 
   private:
     // convert a Address to its location in the cache
@@ -189,6 +212,9 @@ class CacheMemory : public SimObject
     int findTagInSet(int64_t line, Addr tag) const;
     int findTagInSetIgnorePermissions(int64_t cacheSet, Addr tag) const;
 
+    // Helper Functions
+    void updateTagIndex(Addr buffer_addr, Addr set_addr,int way);
+    int getLatest(int cacheSet);
 
     // Private copy constructor and assignment operator
     CacheMemory(const CacheMemory& obj);
@@ -201,6 +227,7 @@ class CacheMemory : public SimObject
     // The first index is the # of cache lines.
     // The second index is the the amount associativity.
     std::unordered_map<Addr, int> m_tag_index;
+    std::unordered_map<Addr, uint64_t> m_tag_index_time;
     std::vector<std::vector<AbstractCacheEntry*> > m_cache;
 
     AbstractReplacementPolicy *m_replacementPolicy_ptr;

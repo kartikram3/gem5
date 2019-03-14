@@ -325,7 +325,7 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
                               L1Dcache_entry, TBEs[in_msg.LineAddress]);
                   }
 
-                  if (L1Icache.cacheAvail(in_msg.LineAddress)) {
+                  if (L1Icache.cacheAvailIcache(in_msg.LineAddress)) {
                       // L1 does't have the line, but we have space for it
                       // in the L1 so let's see if the L2 has it
                       trigger(prefetch_request_type_to_event(in_msg.Type),
@@ -334,9 +334,9 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
                   } else {
                       // No room in the L1, so we need to make room in the L1
                       trigger(Event:PF_L1_Replacement,
-                              L1Icache.cacheProbe(in_msg.LineAddress),
-                              getL1ICacheEntry(L1Icache.cacheProbe(in_msg.LineAddress)),
-                              TBEs[L1Icache.cacheProbe(in_msg.LineAddress)]);
+                              L1Icache.cacheProbeIcache(in_msg.LineAddress),
+                              getL1ICacheEntry(L1Icache.cacheProbeIcache(in_msg.LineAddress)),
+                              TBEs[L1Icache.cacheProbeIcache(in_msg.LineAddress)]);
                   }
               } else {
                   // Data prefetch
@@ -468,16 +468,16 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
                       L1Dcache_entry, TBEs[in_msg.LineAddress]);
             }
 
-            if (L1Icache.cacheAvail(in_msg.LineAddress)) {
+            if (L1Icache.cacheAvailIcache(in_msg.LineAddress)) {
               // L1 does't have the line, but we have space for it
               // in the L1 so let's see if the L2 has it.
               trigger(mandatory_request_type_to_event(in_msg.Type), in_msg.LineAddress,
                       L1Icache_entry, TBEs[in_msg.LineAddress]);
             } else {
               // No room in the L1, so we need to make room in the L1
-              trigger(Event:L1_Replacement, L1Icache.cacheProbe(in_msg.LineAddress),
-                      getL1ICacheEntry(L1Icache.cacheProbe(in_msg.LineAddress)),
-                      TBEs[L1Icache.cacheProbe(in_msg.LineAddress)]);
+              trigger(Event:L1_Replacement, L1Icache.cacheProbeIcache(in_msg.LineAddress),
+                      getL1ICacheEntry(L1Icache.cacheProbeIcache(in_msg.LineAddress)),
+                      TBEs[L1Icache.cacheProbeIcache(in_msg.LineAddress)]);
             }
           }
         } else {
@@ -914,7 +914,7 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
     if (L1Dcache.isTagPresent(address)) {
       L1Dcache.deallocate(address);
     } else {
-      L1Icache.deallocate(address);
+      L1Icache.deallocateIcache(address);
     }
     unset_cache_entry();
   }
@@ -927,7 +927,7 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
 
   action(pp_allocateL1ICacheBlock, "\p", desc="Set L1 I-cache tag equal to tag of block B.") {
     if (is_invalid(cache_entry)) {
-      set_cache_entry(L1Icache.allocate(address, new Entry));
+      set_cache_entry(L1Icache.allocateIcache(address, new Entry));
     }
   }
 
@@ -948,7 +948,6 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
   }
 
   action(uu_profileInstHit, "\uih", desc="Profile the demand hit") {
-      L1Icache.updateBufStats(address);
       ++L1Icache.demand_hits;
   }
 
@@ -964,7 +963,7 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
   action(po_observeHit, "\ph", desc="Inform the prefetcher about the hit") {
       peek(mandatoryQueue_in, RubyRequest) {
           if (cache_entry.isPrefetch) {
-              prefetcher.observePfHit(in_msg.LineAddress);
+              //prefetcher.observePfHit(in_msg.LineAddress);
               cache_entry.isPrefetch := false;
           }
       }
@@ -973,7 +972,7 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
   action(po_observeMiss, "\po", desc="Inform the prefetcher about the miss") {
       peek(mandatoryQueue_in, RubyRequest) {
           if (enable_prefetch) {
-              prefetcher.observeMiss(in_msg.LineAddress, in_msg.Type);
+              //prefetcher.observeMiss(in_msg.LineAddress, in_msg.Type);
           }
       }
   }
@@ -981,7 +980,7 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
   action(ppm_observePfMiss, "\ppm",
          desc="Inform the prefetcher about the partial miss") {
       peek(mandatoryQueue_in, RubyRequest) {
-          prefetcher.observePfMiss(in_msg.LineAddress);
+          //prefetcher.observePfMiss(in_msg.LineAddress);
       }
   }
 
