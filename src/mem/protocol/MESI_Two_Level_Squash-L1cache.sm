@@ -52,7 +52,6 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
    MessageBuffer * unblockFromL1Cache, network="To", virtual_network="2",
         vnet_type="unblock";
 
-
    // To this node's L1 cache FROM the network
    // a L2 bank -> this L1
    MessageBuffer * requestToL1Cache, network="From", virtual_network="2",
@@ -797,6 +796,19 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
       DPRINTF(RubySlicc, "%#x\n", address);
     }
   }
+
+  action(sq_sendSquash, "sq", desc="send squash to the L2 cache") {
+    enqueue(unblockNetwork_out, ResponseMsg, to_l2_latency) {
+      out_msg.addr := address;
+      out_msg.Type := CoherenceResponseType:UNBLOCK;
+      out_msg.Sender := machineID;
+      out_msg.Destination.add(mapAddressToRange(address, MachineType:L2Cache,
+                          l2_select_low_bit, l2_select_num_bits, intToID(0)));
+      out_msg.MessageSize := MessageSizeType:Response_Control;
+      DPRINTF(RubySlicc, "%#x\n", address);
+    }
+  }
+
 
   action(jj_sendExclusiveUnblock, "\j", desc="send unblock to the L2 cache") {
     enqueue(unblockNetwork_out, ResponseMsg, to_l2_latency) {
