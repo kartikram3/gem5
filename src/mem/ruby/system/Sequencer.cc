@@ -453,6 +453,11 @@ Sequencer::hitCallback(SequencerRequest* srequest, DataBlock& data,
     RubyRequestType type = srequest->m_type;
     Cycles issued_time = srequest->issue_time;
 
+    //Modified by Kartik ...
+    //Modify it so that timing is affected by any transitions
+
+
+
     assert(curCycle() >= issued_time);
     Cycles total_latency = curCycle() - issued_time;
 
