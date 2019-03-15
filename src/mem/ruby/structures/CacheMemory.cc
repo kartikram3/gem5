@@ -136,6 +136,57 @@ CacheMemory::getLatest(int cacheSet){
    return select;
 }
 
+bool
+CacheMemory::lastAccessTime(Addr address){
+  int loc = findTagInSet(addressToCacheSet(address), address);
+  uint64_t _time = -1;
+  if (loc != -1){
+     if (loc < 100){
+        assert(m_tag_index_time.find(address)
+               != m_tag_index_time.end());
+        _time = m_tag_index_time[address];
+        return ((_time - curTick()) < 100000)
+     } else {
+        assert(miss_buffer[loc-100].e);
+        _time = miss_buffer[loc-100].age;
+        return ((_time - curTick()) < 100000)
+     }
+  }
+  panic("Uh oh, we are checking access time incorrectly\n");
+}
+
+bool
+CacheMemory::checkEtoS(Addr address){
+  //check the buffer for the address
+  int loc = findTagInSet(addressToCacheSet(address), address);
+  if (loc != -1){
+      if (loc < 100){
+          assert(m_tag_index_EtoS.find(address)
+                 != m_tag_index_EtoS.end());
+          return
+            ((curTick() - m_tag_index_EtoS[address].time)
+             < 100000);
+      }else{
+          assert(miss_buffer[loc-100].e);
+          return(miss_buffer[loc-100].EtoS;
+      }
+  }
+  panic("Uh oh, we are checking EtoS incorrectly\n");
+}
+
+int
+CacheMemory::getTransitionCode(Addr address){
+   //if recent change, then the cache lines need to be
+   //loaded not too much later
+   uint64_t curTime = curTick();
+   bool isMiss = lastAccessTime(address);
+   bool EtoS = checkEtoS(address);
+
+   if ((!EtoS) && isMiss) return 1;
+   else if (EtoS && isMiss) return 2;
+   else return 0;
+}
+
 //squash the side effects associated with the cache accesses
 //switch the kicked out entries
 void

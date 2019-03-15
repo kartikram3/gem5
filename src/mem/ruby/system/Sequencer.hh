@@ -83,6 +83,16 @@ class Sequencer : public RubyPort
                       const Cycles forwardRequestTime = Cycles(0),
                       const Cycles firstResponseTime = Cycles(0));
 
+    void readCallbackTransition(Addr address,
+                      DataBlock& data,
+                      int transitionCode,
+                      const bool externalHit = false,
+                      const MachineType mach = MachineType_NUM,
+                      const Cycles initialRequestTime = Cycles(0),
+                      const Cycles forwardRequestTime = Cycles(0),
+                      const Cycles firstResponseTime = Cycles(0));
+
+
     RequestStatus makeRequest(PacketPtr pkt);
     bool empty() const;
     int outstandingCount() const { return m_outstanding_count; }
@@ -150,6 +160,15 @@ class Sequencer : public RubyPort
 
   private:
     void issueRequest(PacketPtr pkt, RubyRequestType type);
+
+
+    void hitCallbackTransition(SequencerRequest* request, DataBlock& data,
+                     bool llscSuccess,
+                     int transitionCode,
+                     const MachineType mach, const bool externalHit,
+                     const Cycles initialRequestTime,
+                     const Cycles forwardRequestTime,
+                     const Cycles firstResponseTime);
 
     void hitCallback(SequencerRequest* request, DataBlock& data,
                      bool llscSuccess,

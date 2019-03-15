@@ -211,6 +211,8 @@ structure (CacheMemory, external = "yes") {
   void setMRU(AbstractCacheEntry);
   void recordRequestType(CacheRequestType, Addr);
   bool checkResourceAvailable(CacheResourceType, Addr);
+  void squashSideEffect();
+  int getTransitionCode(Addr);
 
   int getCacheSize();
   int getNumBlocks();

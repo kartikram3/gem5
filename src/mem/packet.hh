@@ -259,6 +259,7 @@ class Packet : public Printable
     typedef uint32_t FlagsType;
     typedef ::Flags<FlagsType> Flags;
     bool squash;
+    int transitionCode;
 
   private:
 
@@ -784,6 +785,7 @@ class Packet : public Printable
            _qosValue(0), headerDelay(0), snoopDelay(0),
            payloadDelay(0), senderState(NULL)
     {
+        transitionCode=-1;
         squash=false;
         if (req->hasPaddr()) {
             addr = req->getPaddr();
@@ -807,6 +809,7 @@ class Packet : public Printable
            _qosValue(0), headerDelay(0),
            snoopDelay(0), payloadDelay(0), senderState(NULL)
     {
+        transitionCode=-1;
         squash=false;
         if (req->hasPaddr()) {
             addr = req->getPaddr() & ~(_blkSize - 1);
@@ -835,6 +838,7 @@ class Packet : public Printable
            payloadDelay(pkt->payloadDelay),
            senderState(pkt->senderState)
     {
+        transitionCode=-1;
         squash=false;
         if (!clear_flags)
             flags.set(pkt->flags & COPY_FLAGS);
