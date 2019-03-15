@@ -46,15 +46,15 @@ def define_options(parser):
 def create_system(options, full_system, system, dma_ports, bootmem,
                   ruby_system):
 
-    if buildEnv['PROTOCOL'] != 'MESI_Two_Level':
-     fatal("This script requires the MESI_Two_Level protocol to be built.")
+    if buildEnv['PROTOCOL'] != 'MESI_Two_Level_Squash':
+      fatal("This script requires the Two_Level_Squash protocol to be built.")
 
     cpu_sequencers = []
 
     #
     # The ruby network creation expects the list of nodes in the system to be
-    # consistent with the NetDest list.Therefore the l1 controller nodes mustbe
-    #listed before the directory nodes and directory nodes beforedma nodes,etc.
+    #consistent with the NetDest list.Therefore the l1 controller nodes must be
+    #listed before the directory nodes anddirectory nodes before dma nodes,etc.
     #
     l1_cntrl_nodes = []
     l2_cntrl_nodes = []
@@ -124,6 +124,9 @@ def create_system(options, full_system, system, dma_ports, bootmem,
         l1_cntrl.responseFromL1Cache.master = ruby_system.network.slave
         l1_cntrl.unblockFromL1Cache = MessageBuffer()
         l1_cntrl.unblockFromL1Cache.master = ruby_system.network.slave
+        #l1_cntrl.squashFromL1Cache = MessageBuffer()
+        #l1_cntrl.squashFromL1Cache.master = ruby_system.network.slave
+
 
         l1_cntrl.optionalQueue = MessageBuffer()
 
