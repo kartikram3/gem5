@@ -179,7 +179,8 @@ MasterPort::sendFunctional(PacketPtr pkt)
 bool
 MasterPort::sendTimingReq(PacketPtr pkt)
 {
-    assert(pkt->isRequest());
+    if (!pkt->squash)
+      assert(pkt->isRequest());
     return _slavePort->recvTimingReq(pkt);
 }
 

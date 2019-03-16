@@ -66,6 +66,8 @@ class CacheMemory : public SimObject
       //Entry that replaced it ... restore if there
       //is a cache squash
       uint64_t age;
+      bool EtoS;
+      uint64_t EtoS_time;
     } MissBufferEntry;
 
   public:
@@ -86,6 +88,10 @@ class CacheMemory : public SimObject
 
     // Public Methods
     void checkDuplicates();
+
+    //Check Transient states for timing
+    bool lastAccessTime(Addr address);
+    bool checkEtoS(Addr address);
 
     // perform a cache access and see if we hit or not.  Return true on a hit.
     bool tryCacheAccess(Addr address, RubyRequestType type,
@@ -231,6 +237,7 @@ class CacheMemory : public SimObject
     // The second index is the the amount associativity.
     std::unordered_map<Addr, int> m_tag_index;
     std::unordered_map<Addr, uint64_t> m_tag_index_time;
+    std::unordered_map<Addr, int> m_tag_index_EtoS;
     std::vector<std::vector<AbstractCacheEntry*> > m_cache;
 
     AbstractReplacementPolicy *m_replacementPolicy_ptr;

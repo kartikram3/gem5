@@ -635,6 +635,8 @@ FullO3CPU<Impl>::receiveDataPkt(){
    //use a priority queue instead of
    //a list ... this helps re-time
    //packets that got there early
+   //also we can check the time for the
+   //late packets
    if (packets.size() > 0)
    {
       PacketInfo pi = *(packets.begin());

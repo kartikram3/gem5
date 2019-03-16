@@ -682,7 +682,7 @@ Sequencer::makeRequest(PacketPtr pkt)
             primary_type = RubyRequestType_Load_Linked;
         }
         secondary_type = RubyRequestType_ATOMIC;
-    } else if (pkt->req->isLockedRMW()) {
+    } else if ( pkt->req && pkt->req->isLockedRMW()) {
         //
         // x86 locked instructions are translated to store cache coherence
         // requests because these requests should always be treated as read
@@ -750,14 +750,15 @@ void
 Sequencer::issueRequest(PacketPtr pkt, RubyRequestType secondary_type)
 {
     assert(pkt != NULL);
-    ContextID proc_id = pkt->req->hasContextId() ?
-        pkt->req->contextId() : InvalidContextID;
+    ContextID proc_id = InvalidContextID;
+    if (pkt->req)
+      pkt->req->hasContextId() ? pkt->req->contextId() : InvalidContextID;
 
     ContextID core_id = coreId();
 
     // If valid, copy the pc to the ruby request
     Addr pc = 0;
-    if (pkt->req->hasPC()) {
+    if ( pkt->req && pkt->req->hasPC()) {
         pc = pkt->req->getPC();
     }
 

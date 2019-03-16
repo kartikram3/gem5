@@ -135,6 +135,7 @@ class MemCmd
         FlushReq,      //request for a cache flush
         InvalidateReq,   // request for address to be invalidated
         InvalidateResp,
+        SquashReq,
         NUM_MEM_CMDS
     };
 
@@ -811,13 +812,20 @@ class Packet : public Printable
     {
         transitionCode=-1;
         squash=false;
-        if (req->hasPaddr()) {
-            addr = req->getPaddr() & ~(_blkSize - 1);
-            flags.set(VALID_ADDR);
-            _isSecure = req->isSecure();
+        if (req){
+          if (req->hasPaddr()) {
+              addr = req->getPaddr() & ~(_blkSize - 1);
+              flags.set(VALID_ADDR);
+              _isSecure = req->isSecure();
+          }
         }
         size = _blkSize;
         flags.set(VALID_SIZE);
+
+        if (!req){
+          flags.set(VALID_ADDR);
+          addr=-1;
+        }
     }
 
     /**

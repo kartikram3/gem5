@@ -1021,27 +1021,6 @@ LSQUnit<Impl>::squash(const InstSeqNum &squashed_num)
 
         // Clear the smart pointer to make sure it is decremented.
         loadQueue[load_idx]->setSquashed();
-
-        // fprintf(stderr, "The squash issue time is %lx\n",
-        //       loadQueue[load_idx]->issueTime);
-        // increment the potential squashed loads
-        //if (loadQueue[load_idx]->issueTime != -1){
-        //  fprintf(stderr,"The squash latency is %lx\n",
-        //         loadQueue[load_idx]->latency);
-        //}
-
-        if (loadQueue[load_idx]->receivedResp){
-          if (loadQueue[load_idx]->sideEffect){
-            squashLoads++;
-          };
-        } else{if (loadQueue[load_idx]->issueTime != -1)
-                 if ( (curTick() - loadQueue[load_idx]->issueTime)
-                       > 2000)
-                 squashLoads++;
-        } //pessimistic assumption ... we should send a single squash
-          //request ... because we don't need to squash much most of
-          //the time
-
         loadQueue[load_idx] = NULL;
         --loads;
 
@@ -1110,7 +1089,12 @@ LSQUnit<Impl>::squash(const InstSeqNum &squashed_num)
 template <class Impl>
 void
 LSQUnit<Impl>::executeLoadSquash(){
-   //create a squash packet ...
+   //create a squash packet by copying the latest
+   PacketPtr pkt = new Packet(NULL, MemCmd(MemCmd::SquashReq),64);
+   pkt->squash=true;
+   if (!dcachePort->sendTimingReq(pkt)){
+      delete pkt;
+   }
 }
 
 template <class Impl>

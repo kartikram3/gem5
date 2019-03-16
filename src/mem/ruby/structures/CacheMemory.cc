@@ -76,7 +76,7 @@ CacheMemory::CacheMemory(const Params *p)
     order = 0;
 
     for (int i=0; i<buf_size; i++){
-      miss_buffer.push_back({NULL, 1});
+      miss_buffer.push_back({NULL, 1, false, 0});
     }
 
     buffer_full=false;
@@ -145,11 +145,11 @@ CacheMemory::lastAccessTime(Addr address){
         assert(m_tag_index_time.find(address)
                != m_tag_index_time.end());
         _time = m_tag_index_time[address];
-        return ((_time - curTick()) < 100000)
+        return ((_time - curTick()) < 100000);
      } else {
         assert(miss_buffer[loc-100].e);
         _time = miss_buffer[loc-100].age;
-        return ((_time - curTick()) < 100000)
+        return ((_time - curTick()) < 100000);
      }
   }
   panic("Uh oh, we are checking access time incorrectly\n");
@@ -164,11 +164,11 @@ CacheMemory::checkEtoS(Addr address){
           assert(m_tag_index_EtoS.find(address)
                  != m_tag_index_EtoS.end());
           return
-            ((curTick() - m_tag_index_EtoS[address].time)
+            ((curTick() - m_tag_index_EtoS[address])
              < 100000);
       }else{
           assert(miss_buffer[loc-100].e);
-          return(miss_buffer[loc-100].EtoS;
+          return(miss_buffer[loc-100].EtoS);
       }
   }
   panic("Uh oh, we are checking EtoS incorrectly\n");
@@ -178,7 +178,6 @@ int
 CacheMemory::getTransitionCode(Addr address){
    //if recent change, then the cache lines need to be
    //loaded not too much later
-   uint64_t curTime = curTick();
    bool isMiss = lastAccessTime(address);
    bool EtoS = checkEtoS(address);
 
