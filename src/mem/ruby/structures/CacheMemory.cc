@@ -190,6 +190,8 @@ CacheMemory::getTransitionCode(Addr address){
 //switch the kicked out entries
 void
 CacheMemory::squashSideEffect(){
+   return;
+   if (!buffer_full) return;
    assert(buffer_full);
    uint64_t time=curTick();
    int cacheSet=0;
@@ -217,6 +219,39 @@ CacheMemory::squashSideEffect(){
       }
    }
 }
+
+void
+CacheMemory::squashSideEffectL2(){
+   return;
+   if (!buffer_full) return;
+   assert(buffer_full);
+   uint64_t time=curTick();
+   int cacheSet=0;
+   int way=0;
+   Addr buffer_addr,set_addr;
+   AbstractCacheEntry *temp_e = NULL;
+   //switch the positions of the two entries
+   for (int i=0; i<buf_size; i++){
+      //switch the recent entries (within the last 100 cycles);
+      if (miss_buffer[i].e) {
+         if ((time - miss_buffer[i].age) < 100000){
+             //put it back into cache and exchange
+             //with the most recent entries
+             temp_e = miss_buffer[i].e;
+             cacheSet =
+               addressToCacheSet(miss_buffer[i].e->m_Address);
+             way =
+               getLatest(cacheSet);
+             buffer_addr = miss_buffer[i].e->m_Address;
+             set_addr = m_cache[cacheSet][way]->m_Address;
+             miss_buffer[i].e = m_cache[cacheSet][way];
+             m_cache[cacheSet][way] = temp_e;
+             updateTagIndex(buffer_addr,set_addr,way);
+         }
+      }
+   }
+}
+
 
 CacheMemory::~CacheMemory()
 {

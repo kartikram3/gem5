@@ -736,9 +736,12 @@ Sequencer::makeRequest(PacketPtr pkt)
         }
     }
 
-    RequestStatus status = insertRequest(pkt, primary_type);
-    if (status != RequestStatus_Ready)
-        return status;
+    //pkt->addr =
+    if (pkt->req){
+      RequestStatus status = insertRequest(pkt, primary_type);
+      if (status != RequestStatus_Ready)
+          return status;
+    }
 
     issueRequest(pkt, secondary_type);
 
@@ -747,9 +750,22 @@ Sequencer::makeRequest(PacketPtr pkt)
 }
 
 void
+Sequencer::deleteSquash()
+{
+   //squash the packets
+   assert(squashList.size() != 0);
+   PacketPtr pkt = *(squashList.begin());
+   squashList.pop_front();
+   delete pkt;
+}
+
+void
 Sequencer::issueRequest(PacketPtr pkt, RubyRequestType secondary_type)
 {
     assert(pkt != NULL);
+    if (!pkt->req){
+       squashList.push_back(pkt);
+    }
     ContextID proc_id = InvalidContextID;
     if (pkt->req)
       pkt->req->hasContextId() ? pkt->req->contextId() : InvalidContextID;
@@ -766,7 +782,7 @@ Sequencer::issueRequest(PacketPtr pkt, RubyRequestType secondary_type)
     // requests do not
     std::shared_ptr<RubyRequest> msg =
         std::make_shared<RubyRequest>(clockEdge(), pkt->getAddr(),
-                                      pkt->isFlush() ?
+                                      (pkt->isFlush() || pkt->isSquash()) ?
                                       nullptr : pkt->getPtr<uint8_t>(),
                                       pkt->getSize(), pc, secondary_type,
                                       RubyAccessMode_Supervisor, pkt,
@@ -794,6 +810,12 @@ Sequencer::issueRequest(PacketPtr pkt, RubyRequestType secondary_type)
 
     assert(m_mandatory_q_ptr != NULL);
     m_mandatory_q_ptr->enqueue(msg, clockEdge(), cyclesToTicks(latency));
+
+    //if (!pkt->req){
+    //  //assert(pkt->isSquash());
+    //  //squashList.push_back(pkt);
+    //  delete pkt;
+    //}
 }
 
 template <class KEY, class VALUE>

@@ -847,6 +847,15 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
     sequencer.readCallback(address, cache_entry.DataBlk);
   }
 
+  action(rse_reverse_side_effect, "rse",
+         desc="Reverse the side effects")
+  {
+    assert(!is_valid(cache_entry));
+    L1Dcache.squashSideEffect();
+    //sequencer.deleteSquash();
+  }
+
+
   action(h_ifetch_hit, "hi", desc="Notify sequencer the instruction fetch completed.")
   {
     assert(is_valid(cache_entry));
@@ -896,6 +905,12 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
   action(k_popMandatoryQueue, "k", desc="Pop mandatory queue.") {
     mandatoryQueue_in.dequeue(clockEdge());
   }
+
+  action(kj_popMandatoryQueueSquash, "kj", desc="Pop mandatory queue on squash.") {
+    mandatoryQueue_in.dequeue(clockEdge());
+    sequencer.deleteSquash();
+  }
+
 
   action(l_popRequestQueue, "l",
     desc="Pop incoming request queue and profile the delay within this virtual network") {
@@ -1024,7 +1039,9 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
 
   //Squash transition ... use address with tag -1
   transition({NP}, Squash) {
+    rse_reverse_side_effect;
     sq_issueSquash;
+    kj_popMandatoryQueueSquash;
   }
 
   transition({IS, IM, IS_I, M_I, SM, SINK_WB_ACK}, {Load, Ifetch, Store, L1_Replacement}) {

@@ -105,7 +105,7 @@ structure (Sequencer, external = "yes") {
   void readCallback(Addr, DataBlock, bool, MachineType);
   void readCallback(Addr, DataBlock, bool, MachineType,
                     Cycles, Cycles, Cycles);
-
+  void deleteSquash();
   void writeCallback(Addr, DataBlock);
   void writeCallback(Addr, DataBlock, bool);
   void writeCallback(Addr, DataBlock, bool, MachineType);
@@ -212,6 +212,7 @@ structure (CacheMemory, external = "yes") {
   void recordRequestType(CacheRequestType, Addr);
   bool checkResourceAvailable(CacheResourceType, Addr);
   void squashSideEffect();
+  void squashSideEffectL2();
   int getTransitionCode(Addr);
 
   int getCacheSize();

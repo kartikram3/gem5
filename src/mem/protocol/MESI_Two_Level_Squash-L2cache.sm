@@ -95,6 +95,7 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
 
     L1_PUTX,                 desc="L1 replacing data";
     L1_PUTX_old,             desc="L1 replacing data, but no longer sharer";
+    L1_SQUASH,               desc="Squash request set by L1";
 
     // events initiated by this L2
     L2_Replacement,     desc="L2 Replacement", format="!r";
@@ -249,7 +250,9 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
 
   Event L1Cache_request_type_to_event(CoherenceRequestType type, Addr addr,
                                       MachineID requestor, Entry cache_entry) {
-    if(type == CoherenceRequestType:GETS) {
+    if (type == CoherenceRequestType:SQUASH) {
+      return Event:L1_SQUASH;
+    } else if(type == CoherenceRequestType:GETS) {
       return Event:L1_GETS;
     } else if(type == CoherenceRequestType:GET_INSTR) {
       return Event:L1_GET_INSTR;
@@ -372,7 +375,8 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
                   in_msg.addr, cache_entry, tbe);
         } else {
           if (in_msg.Type == CoherenceRequestType:SQUASH){
-            L2cache.squashSideEffect();
+            trigger(Event:L1_SQUASH, in_msg.addr,
+                    cache_entry, tbe);
           } else if (L2cache.cacheAvail(in_msg.addr)) {
             // L2 does't have the line, but we have space for it in the L2
             trigger(L1Cache_request_type_to_event(in_msg.Type, in_msg.addr,
@@ -610,6 +614,11 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
     unset_tbe();
   }
 
+
+  action(rse_reverse_side_effect, "rse", desc="Reverse side effects") {
+     L2cache.squashSideEffectL2();
+  }
+
   action(jj_popL1RequestQueue, "\j", desc="Pop incoming L1 request queue") {
     Tick delay := L1RequestL2Network_in.dequeue(clockEdge());
     profileMsgDelay(0, ticksToCycles(delay));
@@ -795,6 +804,12 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
   // BASE STATE - I
 
   // Transitions from I (Idle)
+
+  transition({NP}, L1_SQUASH) {
+    //squash the side effects
+    rse_reverse_side_effect;
+    jj_popL1RequestQueue;
+  }
 
   transition({NP, IS, ISS, IM, SS, M, M_I, I_I, S_I, MT_IB, MT_SB}, L1_PUTX) {
     t_sendWBAck;

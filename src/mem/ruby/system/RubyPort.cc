@@ -271,7 +271,7 @@ RubyPort::MemSlavePort::recvTimingReq(PacketPtr pkt)
     }
     // Check for pio requests and directly send them to the dedicated
     // pio port.
-    if (pkt->cmd != MemCmd::MemFenceReq) {
+    if (pkt->req && (pkt->cmd != MemCmd::MemFenceReq)) {
         if (!isPhysMemAddress(pkt->getAddr())) {
             assert(ruby_port->memMasterPort.isConnected());
             DPRINTF(RubyPort, "Request address %#x assumed to be a "
@@ -315,7 +315,9 @@ RubyPort::MemSlavePort::recvTimingReq(PacketPtr pkt)
                 RequestStatus_to_string(requestStatus));
     }
 
-    addToRetryList();
+    if (pkt->req){
+       addToRetryList();
+    }
 
     return false;
 }

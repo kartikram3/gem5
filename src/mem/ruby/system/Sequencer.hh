@@ -30,6 +30,7 @@
 #define __MEM_RUBY_SYSTEM_SEQUENCER_HH__
 
 #include <iostream>
+#include <list>
 #include <unordered_map>
 
 #include "mem/protocol/MachineType.hh"
@@ -60,6 +61,10 @@ class Sequencer : public RubyPort
     typedef RubySequencerParams Params;
     Sequencer(const Params *);
     ~Sequencer();
+
+    //Squash list
+    std::list<PacketPtr> squashList;
+    void deleteSquash();
 
     // Public Methods
     void wakeup(); // Used only for deadlock detection

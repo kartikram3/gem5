@@ -211,6 +211,7 @@ class CacheMemory : public SimObject
     Addr getAddressAtIdx(int idx) const;
     void checkAge(uint64_t age);
     void squashSideEffect();
+    void squashSideEffectL2();
 
   private:
     // convert a Address to its location in the cache
