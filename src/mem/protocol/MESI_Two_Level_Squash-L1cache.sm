@@ -165,6 +165,7 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
   void unset_tbe();
   void wakeUpBuffers(Addr a);
   void profileMsgDelay(int virtualNetworkType, Cycles c);
+  MachineID createID(MachineType type, NodeID id );
 
   // inclusive cache returns L1 entries only
   Entry getCacheEntry(Addr addr), return_by_pointer="yes" {
@@ -674,6 +675,7 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
     }
   }
 
+
   action(d2_sendDataToL2, "d2", desc="send data to the L2 cache because of M downgrade") {
     enqueue(responseL1Network_out, ResponseMsg, l1_response_latency) {
       assert(is_valid(cache_entry));
@@ -812,8 +814,8 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
       out_msg.addr := address;
       out_msg.Type := CoherenceRequestType:SQUASH;
       out_msg.Requestor := machineID;
-      out_msg.Destination.add(mapAddressToRange(address, MachineType:L2Cache,
-                          l2_select_low_bit, l2_select_num_bits, intToID(0)));
+      MachineID m0 := createID(MachineType:L2Cache, intToID(0));
+      out_msg.Destination.addRange(m0,l2_select_num_bits);
       out_msg.MessageSize := MessageSizeType:Writeback_Control;
       DPRINTF(RubySlicc, "%#x\n", address);
     }
@@ -843,8 +845,10 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
   {
     assert(is_valid(cache_entry));
     DPRINTF(RubySlicc, "%s\n", cache_entry.DataBlk);
-    L1Dcache.setMRU(cache_entry);
-    sequencer.readCallback(address, cache_entry.DataBlk);
+    //L1Dcache.setMRU(cache_entry);
+    L1Dcache.setMRU(address);
+    //sequencer.readCallback(address, cache_entry.DataBlk);
+    sequencer.readCallbackTransition(address, cache_entry.DataBlk, 0);
   }
 
   action(rse_reverse_side_effect, "rse",
@@ -855,13 +859,24 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
     //sequencer.deleteSquash();
   }
 
+  action(upd_updateEtoS, "upd",
+         desc="Record E to S transition")
+  {
+    assert(is_valid(cache_entry));
+    L1Dcache.setEtoS(address);
+    //sequencer.deleteSquash();
+  }
+
+
 
   action(h_ifetch_hit, "hi", desc="Notify sequencer the instruction fetch completed.")
   {
     assert(is_valid(cache_entry));
     DPRINTF(RubySlicc, "%s\n", cache_entry.DataBlk);
-    L1Icache.setMRU(cache_entry);
-    sequencer.readCallback(address, cache_entry.DataBlk);
+    //L1Icache.setMRU(cache_entry);
+    L1Icache.setMRU(address);
+    //sequencer.readCallback(address, cache_entry.DataBlk);
+    sequencer.readCallbackTransition(address, cache_entry.DataBlk, 0);
   }
 
   action(hx_load_hit, "hx", desc="Notify sequencer the load completed.")
@@ -870,14 +885,16 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
     DPRINTF(RubySlicc, "%s\n", cache_entry.DataBlk);
     L1Icache.setMRU(address);
     L1Dcache.setMRU(address);
-    sequencer.readCallback(address, cache_entry.DataBlk, true);
+    //sequencer.readCallback(address, cache_entry.DataBlk, true);
+    sequencer.readCallbackTransition(address, cache_entry.DataBlk, 0, true);
   }
 
   action(hh_store_hit, "\h", desc="Notify sequencer that store completed.")
   {
     assert(is_valid(cache_entry));
     DPRINTF(RubySlicc, "%s\n", cache_entry.DataBlk);
-    L1Dcache.setMRU(cache_entry);
+    //L1Dcache.setMRU(cache_entry);
+    L1Dcache.setMRU(address);
     sequencer.writeCallback(address, cache_entry.DataBlk);
     cache_entry.Dirty := true;
   }
@@ -1225,6 +1242,7 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
   }
 
   transition(E, {Fwd_GETS, Fwd_GET_INSTR}, S) {
+    upd_updateEtoS;
     d_sendDataToRequestor;
     d2_sendDataToL2;
     l_popRequestQueue;

@@ -433,8 +433,10 @@ Sequencer::readCallbackTransition(Addr address, DataBlock& data,
     assert((request->m_type == RubyRequestType_LD) ||
            (request->m_type == RubyRequestType_IFETCH));
 
-    hitCallback(request, data, true, mach, externalHit,
-                initialRequestTime, forwardRequestTime, firstResponseTime);
+    hitCallbackTransition(request, data, true, transitionCode,
+                          mach, externalHit,
+                          initialRequestTime, forwardRequestTime,
+                          firstResponseTime);
 }
 
 void
@@ -481,7 +483,7 @@ Sequencer::hitCallbackTransition(SequencerRequest* srequest, DataBlock& data,
 
     //Modified by Kartik ...
     //Modify it so that timing is affected by any transitions
-    pkt->transitionCode = transitionCode;
+    pkt->transitionCode = transitionCode; //transitionCode;
 
     assert(curCycle() >= issued_time);
     Cycles total_latency = curCycle() - issued_time;
@@ -574,8 +576,6 @@ Sequencer::hitCallback(SequencerRequest* srequest, DataBlock& data,
 
     //Modified by Kartik ...
     //Modify it so that timing is affected by any transitions
-
-
 
     assert(curCycle() >= issued_time);
     Cycles total_latency = curCycle() - issued_time;

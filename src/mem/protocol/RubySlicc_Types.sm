@@ -74,6 +74,7 @@ structure (NetDest, external = "yes", non_obj="yes") {
   void setSize(int, int);
   void add(NodeID);
   void add(MachineID);
+  void addRange(MachineID, int);
   void addSet(Set);
   void addNetDest(NetDest);
   void setNetDest(MachineType, Set);
@@ -105,6 +106,13 @@ structure (Sequencer, external = "yes") {
   void readCallback(Addr, DataBlock, bool, MachineType);
   void readCallback(Addr, DataBlock, bool, MachineType,
                     Cycles, Cycles, Cycles);
+
+  void readCallbackTransition(Addr, DataBlock, int);
+  void readCallbackTransition(Addr, DataBlock, int, bool);
+  void readCallbackTransition(Addr, DataBlock, int, bool, MachineType);
+  void readCallbackTransition(Addr, DataBlock, int, bool, MachineType,
+                    Cycles, Cycles, Cycles);
+
   void deleteSquash();
   void writeCallback(Addr, DataBlock);
   void writeCallback(Addr, DataBlock, bool);
@@ -191,6 +199,7 @@ structure(AbstractCacheEntry, primitive="yes", external = "yes") {
 }
 
 structure (CacheMemory, external = "yes") {
+  void setEtoS(Addr);
   bool cacheAvail(Addr);
   bool cacheAvailIcache(Addr);
   void updateBufStats(Addr);

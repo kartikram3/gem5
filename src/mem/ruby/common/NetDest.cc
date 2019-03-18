@@ -43,6 +43,14 @@ NetDest::add(MachineID newElement)
 }
 
 void
+NetDest::addRange(MachineID newElement, int range)
+{
+    for (int i=0; i<range; i++){
+       m_bits[vecIndex(newElement)].add(bitIndex((NodeID)i));
+    }
+}
+
+void
 NetDest::addNetDest(const NetDest& netDest)
 {
     assert(m_bits.size() == netDest.getSize());

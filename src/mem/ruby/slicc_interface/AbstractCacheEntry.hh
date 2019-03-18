@@ -45,6 +45,7 @@ class DataBlock;
 class AbstractCacheEntry : public AbstractEntry
 {
   public:
+    uint64_t lastAcc;
     AbstractCacheEntry();
     virtual ~AbstractCacheEntry() = 0;
 

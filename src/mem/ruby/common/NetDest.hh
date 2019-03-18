@@ -32,8 +32,8 @@
 #include <iostream>
 #include <vector>
 
-#include "mem/ruby/common/Set.hh"
 #include "mem/ruby/common/MachineID.hh"
+#include "mem/ruby/common/Set.hh"
 
 // NetDest specifies the network destination of a Message
 class NetDest
@@ -50,6 +50,7 @@ class NetDest
     { }
 
     void add(MachineID newElement);
+    void addRange(MachineID newElement, int range);
     void addNetDest(const NetDest& netDest);
     void setNetDest(MachineType machine, const Set& set);
     void remove(MachineID oldElement);

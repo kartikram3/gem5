@@ -116,23 +116,17 @@ CacheMemory::updateTagIndex(Addr buffer_addr, Addr set_addr, int way){
 int
 CacheMemory::getLatest(int cacheSet){
    //get the latest valid cache line in the set
-   Addr temp;
-   uint64_t time = 0;
+   uint64_t temp = 0;
+   AbstractCacheEntry *e;
    int select = -1;
-
    for (int i=0; i<m_cache_assoc; i++){
-       if (m_cache[cacheSet][i]){
-           temp = m_cache[cacheSet][i]->m_Address;
-           assert(m_tag_index_time.find(temp) !=
-                  m_tag_index_time.end());
-           if (m_tag_index_time[temp] > time){
-              time = m_tag_index_time[temp];
-              select = i;
-           }
-       }
+     if (m_cache[cacheSet][i] &&
+         ((m_cache[cacheSet][i]->lastAcc) < temp)){
+         e = m_cache[cacheSet][i];
+         temp = e->lastAcc;
+         select = i;
+     }
    }
-
-   assert(select != -1);
    return select;
 }
 
@@ -174,6 +168,22 @@ CacheMemory::checkEtoS(Addr address){
   panic("Uh oh, we are checking EtoS incorrectly\n");
 }
 
+void
+CacheMemory::setEtoS(Addr address){
+  int loc = findTagInSet(addressToCacheSet(address),address);
+  if (loc != -1){
+      if (loc < 100){
+        assert(m_tag_index.find(address) !=
+               m_tag_index.end());
+        m_tag_index_EtoS[address]=curTick();
+      }else{
+        assert(miss_buffer[loc-100].e);
+        miss_buffer[address].EtoS_time = curTick();
+        miss_buffer[address].EtoS = true;
+      }
+  }
+}
+
 int
 CacheMemory::getTransitionCode(Addr address){
    //if recent change, then the cache lines need to be
@@ -190,7 +200,6 @@ CacheMemory::getTransitionCode(Addr address){
 //switch the kicked out entries
 void
 CacheMemory::squashSideEffect(){
-   return;
    if (!buffer_full) return;
    assert(buffer_full);
    uint64_t time=curTick();
@@ -205,11 +214,13 @@ CacheMemory::squashSideEffect(){
          if ((time - miss_buffer[i].age) < 100000){
              //put it back into cache and exchange
              //with the most recent entries
+             m_cache_line_swapped_L1++;
              temp_e = miss_buffer[i].e;
              cacheSet =
                addressToCacheSet(miss_buffer[i].e->m_Address);
              way =
                getLatest(cacheSet);
+             if (way == -1) return;
              buffer_addr = miss_buffer[i].e->m_Address;
              set_addr = m_cache[cacheSet][way]->m_Address;
              miss_buffer[i].e = m_cache[cacheSet][way];
@@ -222,7 +233,6 @@ CacheMemory::squashSideEffect(){
 
 void
 CacheMemory::squashSideEffectL2(){
-   return;
    if (!buffer_full) return;
    assert(buffer_full);
    uint64_t time=curTick();
@@ -238,6 +248,7 @@ CacheMemory::squashSideEffectL2(){
              //put it back into cache and exchange
              //with the most recent entries
              temp_e = miss_buffer[i].e;
+             m_cache_line_swapped_L2++;
              cacheSet =
                addressToCacheSet(miss_buffer[i].e->m_Address);
              way =
@@ -251,7 +262,6 @@ CacheMemory::squashSideEffectL2(){
       }
    }
 }
-
 
 CacheMemory::~CacheMemory()
 {
@@ -533,12 +543,15 @@ CacheMemory::cacheAvail(Addr address)
        if (nullAvailable){
           miss_buffer[nullIdx].e = m_cache[cacheSet][0];
           miss_buffer[nullIdx].age = curTick();
+          miss_buffer[nullIdx].EtoS = false;
+          miss_buffer[nullIdx].EtoS_time = m_tag_index_EtoS[mov_addr];
           assert(m_cache[cacheSet][0]->m_Permission !=
               AccessPermission_NotPresent);
           m_cache[cacheSet][0] = NULL;
           assert(m_tag_index.find(mov_addr) != m_tag_index.end());
           m_tag_index.erase(m_tag_index.find(mov_addr));
-          m_tag_index_time.erase(mov_addr);
+          m_tag_index_time.erase(m_tag_index_time.find(mov_addr));
+          m_tag_index_EtoS.erase(m_tag_index_EtoS.find(mov_addr));
           //fprintf(stderr, "Erased addr is %lx \n", mov_addr);
           checkDuplicates();
           return true;
@@ -587,6 +600,7 @@ CacheMemory::allocateIcache(Addr address,
                     address);
             set[i]->m_locked = -1;
             m_tag_index[address] = i;
+
             entry->setSetIndex(cacheSet);
             entry->setWayIndex(i);
 
@@ -632,11 +646,13 @@ CacheMemory::allocate(Addr address, AbstractCacheEntry *entry, bool touch)
             set[i] = entry;  // Init entry
             set[i]->m_Address = address;
             set[i]->m_Permission = AccessPermission_Invalid;
+            set[i]->lastAcc = curTick();
             DPRINTF(RubyCache, "Allocate clearing lock for addr: %x\n",
                     address);
             set[i]->m_locked = -1;
             m_tag_index[address] = i;
             m_tag_index_time[address] = curTick();
+            m_tag_index_EtoS[address] = -1;
             entry->setSetIndex(cacheSet);
             entry->setWayIndex(i);
 
@@ -660,8 +676,7 @@ void CacheMemory::deallocateIcache(Addr address){
     if (loc != -1) {
        delete m_cache[cacheSet][loc];
        m_cache[cacheSet][loc] = NULL;
-       m_tag_index.erase(address);
-       m_tag_index_time.erase(address);
+       m_tag_index.erase(m_tag_index.find(address));
        assert(loc<100);
     }
 }
@@ -694,8 +709,9 @@ CacheMemory::deallocate(Addr address)
           assert(m_cache[cacheSet][loc]);
           delete m_cache[cacheSet][loc];
           m_cache[cacheSet][loc] = NULL;
-          m_tag_index.erase(address);
-          m_tag_index_time.erase(address);
+          m_tag_index.erase(m_tag_index.find(address));
+          m_tag_index_time.erase(m_tag_index_time.find(address));
+          m_tag_index_EtoS.erase(m_tag_index_EtoS.find(address));
         } else {
           assert(miss_buffer[loc-100].e);
           assert(miss_buffer[loc-100].e->m_Address == address);
@@ -709,14 +725,26 @@ CacheMemory::deallocate(Addr address)
              if (e != NULL){ //storing potential side effect
                //check that the age is the lowest in the buffer
                checkAge(miss_buffer[loc-100].age);
+               assert(m_tag_index_time.find(set_addr) !=
+                      m_tag_index_time.end());
                miss_buffer[loc-100].e = e;
-               miss_buffer[loc-100].age = curTick();
+               miss_buffer[loc-100].age =
+                 m_tag_index_time[address];
+
                m_cache[(*it).set][(*it).way] = NULL;
                assert(m_tag_index.find(set_addr) !=
                       m_tag_index.end());
+               assert(m_tag_index_EtoS.find(set_addr) !=
+                      m_tag_index_EtoS.end());
+               miss_buffer[loc-100].EtoS = false;
+               miss_buffer[loc-100].EtoS_time =
+                       m_tag_index_EtoS[set_addr];
                m_tag_index.erase(m_tag_index.find(set_addr));
-               m_tag_index_time.erase(set_addr);
+               m_tag_index_time.erase(m_tag_index_time.find(set_addr));
+               m_tag_index_EtoS.erase(m_tag_index_EtoS.find(set_addr));
              }else{ //No side effect
+               panic("No side effect for %lx\n",
+                   miss_buffer[loc-100].e->m_Address);
                miss_buffer[loc-100].e = NULL;
                m_side_effect_lost++;
              }
@@ -846,14 +874,18 @@ CacheMemory::setMRU(Addr address)
 {
     int64_t cacheSet = addressToCacheSet(address);
     int loc = findTagInSet(cacheSet, address);
+    AbstractCacheEntry *e;
 
     if (loc != -1){
         if (loc < 100) {
           m_replacementPolicy_ptr->touch(cacheSet, loc, curTick());
+          e = m_cache[cacheSet][loc];
+          e->lastAcc=curTick();
         } else {
-           ; //don't update replacement policy
            assert(m_tag_index.find(address)
                   == m_tag_index.end());
+           //update the last access time
+           miss_buffer[loc-100].e->lastAcc = curTick();
         }
     }
 }
@@ -861,6 +893,8 @@ CacheMemory::setMRU(Addr address)
 void
 CacheMemory::setMRU(const AbstractCacheEntry *e)
 {
+
+    panic("Should not use this setMRU function");
     uint32_t cacheSet = e->getSetIndex();
     uint32_t loc = e->getWayIndex();
 
@@ -870,6 +904,7 @@ CacheMemory::setMRU(const AbstractCacheEntry *e)
          if (miss_buffer[i].e == e){
             assert(m_tag_index.find(e->m_Address) ==
                    m_tag_index.end());
+            miss_buffer[i].e->lastAcc = curTick();
            return;
          }//no touch
        }
@@ -1030,9 +1065,14 @@ CacheMemory::regStats()
 {
     SimObject::regStats();
 
+    m_cache_line_swapped_L1
+        .name(name() + ".swapped_cache_lines_in_L1")
+        .desc("Number of swapped cache lines in L1")
+        ;
+
     m_miss_buf_hits
-        .name(name() + ".miss_buf_hits")
-        .desc("Number of miss buffer hits")
+        .name(name() + ".swapped_cache_lines_in_L2")
+        .desc("Number of swapped cache lines in L2")
         ;
 
     m_demand_hits

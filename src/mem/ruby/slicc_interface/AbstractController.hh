@@ -81,6 +81,8 @@ class AbstractController : public MemObject, public Consumer
     NodeID getVersion() const { return m_machineID.getNum(); }
     MachineType getType() const { return m_machineID.getType(); }
 
+    MachineID createID(MachineType type, NodeID num);
+
     void initNetworkPtr(Network* net_ptr) { m_net_ptr = net_ptr; }
 
     // return instance name

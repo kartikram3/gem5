@@ -324,6 +324,13 @@ AbstractController::functionalMemoryWrite(PacketPtr pkt)
     return num_functional_writes + 1;
 }
 
+MachineID
+AbstractController::createID(MachineType type, NodeID num){
+   //create a machine ID
+   return {type,num};
+}
+
+
 void
 AbstractController::recvTimingResp(PacketPtr pkt)
 {

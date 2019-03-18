@@ -92,6 +92,7 @@ class CacheMemory : public SimObject
     //Check Transient states for timing
     bool lastAccessTime(Addr address);
     bool checkEtoS(Addr address);
+    void setEtoS(Addr address);
 
     // perform a cache access and see if we hit or not.  Return true on a hit.
     bool tryCacheAccess(Addr address, RubyRequestType type,
@@ -186,6 +187,8 @@ class CacheMemory : public SimObject
   public:
     Stats::Scalar m_miss_buf_hits;
     Stats::Scalar m_side_effect_lost;
+    Stats::Scalar m_cache_line_swapped_L1;
+    Stats::Scalar m_cache_line_swapped_L2;
 
     Stats::Scalar m_demand_hits;
     Stats::Scalar m_demand_misses;
