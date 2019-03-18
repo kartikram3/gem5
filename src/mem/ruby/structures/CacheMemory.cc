@@ -139,14 +139,14 @@ CacheMemory::lastAccessTime(Addr address){
         assert(m_tag_index_time.find(address)
                != m_tag_index_time.end());
         _time = m_tag_index_time[address];
-        return ((_time - curTick()) < 100000);
+        return ((curTick() - _time) < 100000);
      } else {
         assert(miss_buffer[loc-100].e);
         _time = miss_buffer[loc-100].age;
-        return ((_time - curTick()) < 100000);
+        return ((curTick() - _time) < 100000);
      }
   }
-  panic("Uh oh, we are checking access time incorrectly\n");
+  return false;
 }
 
 bool
@@ -157,15 +157,20 @@ CacheMemory::checkEtoS(Addr address){
       if (loc < 100){
           assert(m_tag_index_EtoS.find(address)
                  != m_tag_index_EtoS.end());
-          return
+          if (m_tag_index_EtoS[address] == -1)
+            return false;
+          else return
             ((curTick() - m_tag_index_EtoS[address])
              < 100000);
       }else{
           assert(miss_buffer[loc-100].e);
-          return(miss_buffer[loc-100].EtoS);
+          if (miss_buffer[loc-100].EtoS_time == -1)
+            return false;
+          else return((curTick() - miss_buffer[loc-100].EtoS_time)
+                  < 100000);
       }
   }
-  panic("Uh oh, we are checking EtoS incorrectly\n");
+  return false;
 }
 
 void
@@ -191,9 +196,7 @@ CacheMemory::getTransitionCode(Addr address){
    bool isMiss = lastAccessTime(address);
    bool EtoS = checkEtoS(address);
 
-   if ((!EtoS) && isMiss) return 1;
-   else if (EtoS && isMiss) return 2;
-   else return 0;
+   return (isMiss | (EtoS << 1));
 }
 
 //squash the side effects associated with the cache accesses

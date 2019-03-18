@@ -429,6 +429,7 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
   action(c_exclusiveReplacement, "c", desc="Send data to memory") {
     enqueue(responseL2Network_out, ResponseMsg, l2_response_latency) {
       assert(is_valid(cache_entry));
+      int tCode := L2cache.getTransitionCode(address);
       out_msg.addr := address;
       out_msg.Type := CoherenceResponseType:MEMORY_DATA;
       out_msg.Sender := machineID;
@@ -436,6 +437,7 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
       out_msg.DataBlk := cache_entry.DataBlk;
       out_msg.Dirty := cache_entry.Dirty;
       out_msg.MessageSize := MessageSizeType:Response_Data;
+      out_msg.transitionCode := tCode;
     }
   }
 
@@ -452,6 +454,7 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
   action(ct_exclusiveReplacementFromTBE, "ct", desc="Send data to memory") {
     enqueue(responseL2Network_out, ResponseMsg, l2_response_latency) {
       assert(is_valid(tbe));
+      int tCode := L2cache.getTransitionCode(address);
       out_msg.addr := address;
       out_msg.Type := CoherenceResponseType:MEMORY_DATA;
       out_msg.Sender := machineID;
@@ -459,6 +462,7 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
       out_msg.DataBlk := tbe.DataBlk;
       out_msg.Dirty := tbe.Dirty;
       out_msg.MessageSize := MessageSizeType:Response_Data;
+      out_msg.transitionCode := tCode;
     }
   }
 
@@ -466,12 +470,14 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
     peek(L1RequestL2Network_in, RequestMsg) {
       enqueue(responseL2Network_out, ResponseMsg, l2_response_latency) {
         assert(is_valid(cache_entry));
+        int tCode := L2cache.getTransitionCode(address);
         out_msg.addr := address;
         out_msg.Type := CoherenceResponseType:DATA;
         out_msg.Sender := machineID;
         out_msg.Destination.add(in_msg.Requestor);
         out_msg.DataBlk := cache_entry.DataBlk;
         out_msg.MessageSize := MessageSizeType:Response_Data;
+        out_msg.transitionCode := tCode;
 
         out_msg.AckCount := 0 - cache_entry.Sharers.count();
         if (cache_entry.Sharers.isElement(in_msg.Requestor)) {
@@ -485,12 +491,14 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
     peek(L1RequestL2Network_in, RequestMsg) {
       enqueue(responseL2Network_out, ResponseMsg, l2_response_latency) {
         assert(is_valid(cache_entry));
+        int tCode := L2cache.getTransitionCode(address);
         out_msg.addr := address;
         out_msg.Type := CoherenceResponseType:DATA_EXCLUSIVE;
         out_msg.Sender := machineID;
         out_msg.Destination.add(in_msg.Requestor);
         out_msg.DataBlk := cache_entry.DataBlk;
         out_msg.MessageSize := MessageSizeType:Response_Data;
+        out_msg.transitionCode := tCode;
 
         out_msg.AckCount := 0 - cache_entry.Sharers.count();
         if (cache_entry.Sharers.isElement(in_msg.Requestor)) {
@@ -502,6 +510,7 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
 
   action(ds_sendSharedDataToRequestor, "ds", desc="Send data from cache to reqeustor") {
     peek(L1RequestL2Network_in, RequestMsg) {
+      int tCode := L2cache.getTransitionCode(address);
       enqueue(responseL2Network_out, ResponseMsg, l2_response_latency) {
         assert(is_valid(cache_entry));
         out_msg.addr := address;
@@ -511,6 +520,7 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
         out_msg.DataBlk := cache_entry.DataBlk;
         out_msg.MessageSize := MessageSizeType:Response_Data;
         out_msg.AckCount := 0;
+        out_msg.transitionCode := tCode;
       }
     }
   }
@@ -520,12 +530,14 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
     assert(tbe.L1_GetS_IDs.count() > 0);
     enqueue(responseL2Network_out, ResponseMsg, to_l1_latency) {
       assert(is_valid(cache_entry));
+      int tCode := L2cache.getTransitionCode(address);
       out_msg.addr := address;
       out_msg.Type := CoherenceResponseType:DATA;
       out_msg.Sender := machineID;
       out_msg.Destination := tbe.L1_GetS_IDs;  // internal nodes
       out_msg.DataBlk := cache_entry.DataBlk;
       out_msg.MessageSize := MessageSizeType:Response_Data;
+      out_msg.transitionCode := tCode;
     }
   }
 
@@ -534,12 +546,14 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
     assert(tbe.L1_GetS_IDs.count() == 1);
     enqueue(responseL2Network_out, ResponseMsg, to_l1_latency) {
       assert(is_valid(cache_entry));
+      int tCode := L2cache.getTransitionCode(address);
       out_msg.addr := address;
       out_msg.Type := CoherenceResponseType:DATA_EXCLUSIVE;
       out_msg.Sender := machineID;
       out_msg.Destination := tbe.L1_GetS_IDs;  // internal nodes
       out_msg.DataBlk := cache_entry.DataBlk;
       out_msg.MessageSize := MessageSizeType:Response_Data;
+      out_msg.transitionCode := tCode;
     }
   }
 
@@ -547,6 +561,7 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
     enqueue(responseL2Network_out, ResponseMsg, to_l1_latency) {
       assert(is_valid(tbe));
       assert(is_valid(cache_entry));
+      int tCode := L2cache.getTransitionCode(address);
       out_msg.addr := address;
       out_msg.Type := CoherenceResponseType:DATA;
       out_msg.Sender := machineID;
@@ -556,6 +571,7 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
       DPRINTF(RubySlicc, "Address: %#x, Destination: %s, DataBlock: %s\n",
               out_msg.addr, out_msg.Destination, out_msg.DataBlk);
       out_msg.MessageSize := MessageSizeType:Response_Data;
+      out_msg.transitionCode := tCode;
     }
   }
 
@@ -688,6 +704,10 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
 
   action(set_setMRU, "\set", desc="set the MRU entry") {
     L2cache.setMRU(address);
+  }
+
+  action(setEtoS_setEtoS, "setEtoS", desc="set the EtoS state") {
+    L2cache.setEtoS(address);
   }
 
   action(qq_allocateL2CacheBlock, "\q", desc="Set L2 cache tag equal to tag of block B.") {
@@ -970,6 +990,7 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
   transition(M, L1_GETS, MT_MB) {
     dd_sendExclusiveDataToRequestor;
     set_setMRU;
+    setEtoS_setEtoS;
     uu_profileHit;
     jj_popL1RequestQueue;
   }
