@@ -858,7 +858,6 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
     zz_stallAndWaitL1RequestQueue;
   }
 
-
   transition(NP, L1_GETS,  ISS) {
     qq_allocateL2CacheBlock;
     ll_clearSharers;
@@ -990,7 +989,6 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
   transition(M, L1_GETS, MT_MB) {
     dd_sendExclusiveDataToRequestor;
     set_setMRU;
-    setEtoS_setEtoS;
     uu_profileHit;
     jj_popL1RequestQueue;
   }
@@ -1022,6 +1020,7 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
     b_forwardRequestToExclusive;
     uu_profileMiss;
     set_setMRU;
+    setEtoS_setEtoS;
     jj_popL1RequestQueue;
   }
 
@@ -1038,6 +1037,7 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
   }
 
   transition(MT, L1_PUTX, M) {
+    setEtoS_setEtoS;
     ll_clearSharers;
     mr_writeDataToCacheFromRequest;
     t_sendWBAck;

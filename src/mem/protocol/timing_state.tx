@@ -1,0 +1,17 @@
+Coherence state of the cache line also affects access time.
+If coherence state indicates stale data, access time may increase.
+If coherence state indicates up-to-date data, then access time is fast.
+
+By default, we slow down cache accesses of the shared cache to that of the slowest coherence state.
+However, we allow a faster access than the slowest coherence state if two conditions are satisfied :
+A> The current coherence state was not caused due to transient accesses.
+B> The current coherence state cannot be changed by transient access.
+
+This prevents the attacker from learning any timing information using the coherence state.
+For the popular MESI family of directory protocols, this corresponds to the E state.
+E state without any sharers is allowed a fast access if the owner.
+
+If something is in M state, then the access time can be affected by the transient
+loads to a faster state (S), so it is slow access time fundamentally.
+Thus, unshared data is slow to access, otherwise it may result in a wrong 
+coherence state. 
